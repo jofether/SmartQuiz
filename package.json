@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "build": "echo 'No build step required for static frontend'",
+    "lint": "echo 'No lint configured'"
+  },
   "dependencies": {
     "firebase": "^12.6.0"
   }
