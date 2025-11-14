@@ -1,147 +1,156 @@
-// quiz-taker.js — fetches a quiz by id and implements a one-question-at-a-time player
+// quiz-taker.js — sequential quiz player for quiz.html
 import { firebaseConfig } from './firebase-config.js?v=2025-11-14-a';
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
 import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 const $ = (id) => document.getElementById(id);
 
-function ensureApp() {
-  return getApps().length ? getApp() : initializeApp(firebaseConfig);
-}
+const state = {
+  quiz: null,
+  questions: [],
+  index: 0,
+  correct: 0
+};
 
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
-function renderQuestion(container, qObj, index, total, onAnswer) {
-  // container is the content area inside quiz-container
+function updateProgress(currentIndex, total) {
+  const fill = $('progress-fill');
+  if (!fill) return;
+  const pct = total ? Math.round((currentIndex / total) * 100) : 0;
+  fill.style.width = `${pct}%`;
+  fill.setAttribute('aria-valuenow', String(pct));
+}
+
+function renderQuestion() {
+  const container = $('quiz-content-area');
+  if (!container) return;
+
+  const questions = state.questions;
+  const index = state.index;
+  const total = questions.length;
+  const question = questions[index];
+
+  updateProgress(index, total);
+
   container.innerHTML = '';
+
   const wrapper = document.createElement('div');
   wrapper.className = 'quiz-question';
+  wrapper.innerHTML = `
+    <header class="quiz-question__header">
+      <p class="eyebrow">Question ${index + 1} of ${total}</p>
+      <h3>${escapeHtml(question.question || question.prompt || '')}</h3>
+    </header>
+    <div class="choices" role="radiogroup" aria-label="Choices"></div>
+    <div class="quiz-actions"><button class="primary">${index + 1 === total ? 'Finish' : 'Next'}</button></div>
+  `;
 
-  const title = document.createElement('h3');
-  title.textContent = `Q${index + 1} of ${total}`;
-  wrapper.appendChild(title);
+  const choiceGroup = wrapper.querySelector('.choices');
+  const actionBtn = wrapper.querySelector('button');
 
-  const prompt = document.createElement('p');
-  prompt.innerHTML = `<strong>${escapeHtml(qObj.question || qObj.prompt || '')}</strong>`;
-  wrapper.appendChild(prompt);
-
-  // Update progress bar (completed = index)
-  const progressFill = document.getElementById('progress-fill');
-  if (progressFill) {
-    const pct = Math.round((index / Math.max(1, total)) * 100);
-    progressFill.style.width = `${pct}%`;
-    progressFill.setAttribute('aria-valuenow', String(pct));
-    progressFill.setAttribute('aria-valuemin', '0');
-    progressFill.setAttribute('aria-valuemax', '100');
-  }
-
-  const choices = qObj.choices || qObj.options || [];
-  const list = document.createElement('div');
-  list.className = 'choices';
-  list.setAttribute('role', 'radiogroup');
-  list.setAttribute('aria-label', `Question ${index + 1} choices`);
-
-  choices.forEach((c, i) => {
-    const id = `choice-${i}`;
+  const choices = question.choices || question.options || [];
+  choices.forEach((choice) => {
     const label = document.createElement('label');
-    label.htmlFor = id;
     label.className = 'choice-label';
-    label.setAttribute('role', 'radio');
-    label.setAttribute('tabindex', '0');
-    label.setAttribute('aria-checked', 'false');
+    label.tabIndex = 0;
 
     const input = document.createElement('input');
     input.type = 'radio';
     input.name = 'quiz-choice';
-    input.id = id;
-    input.value = c;
-    input.tabIndex = -1; // keep focus on label for easier keyboard UX
+    input.value = choice;
+    input.tabIndex = -1;
 
-    const span = document.createElement('span');
-    span.textContent = c;
+    const text = document.createElement('span');
+    text.textContent = choice;
 
-    // Click / change handling
+    label.appendChild(input);
+    label.appendChild(text);
+
     label.addEventListener('click', () => {
-      // select this input
       input.checked = true;
-      // update selection visuals
-      Array.from(list.querySelectorAll('.choice-label')).forEach((el) => el.classList.remove('selected'));
+      choiceGroup.querySelectorAll('.choice-label').forEach((el) => el.classList.remove('selected'));
       label.classList.add('selected');
-      label.setAttribute('aria-checked', 'true');
-      // keep label focused for keyboard users
       label.focus();
     });
 
-    // keyboard support on the label
-    label.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault();
+    label.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
         label.click();
       }
-      if (ev.key === 'ArrowDown' || ev.key === 'ArrowRight') {
-        ev.preventDefault();
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
+        event.preventDefault();
         const next = label.nextElementSibling;
         if (next) next.focus();
       }
-      if (ev.key === 'ArrowUp' || ev.key === 'ArrowLeft') {
-        ev.preventDefault();
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') {
+        event.preventDefault();
         const prev = label.previousElementSibling;
         if (prev) prev.focus();
       }
-      // number shortcuts: 1..9
-      if (/^[1-9]$/.test(ev.key)) {
-        const n = Number(ev.key) - 1;
-        const target = list.querySelectorAll('.choice-label')[n];
-        if (target) {
-          target.click();
-        }
-      }
     });
 
-    label.appendChild(input);
-    label.appendChild(span);
-    list.appendChild(label);
+    choiceGroup.appendChild(label);
   });
-  wrapper.appendChild(list);
 
-  const actions = document.createElement('div');
-  actions.className = 'quiz-actions';
-  const btn = document.createElement('button');
-  btn.textContent = index + 1 === total ? 'Finish' : 'Next';
-  btn.className = 'primary';
-  btn.addEventListener('click', () => {
-    const selected = list.querySelector('input[name="quiz-choice"]:checked');
+  actionBtn.addEventListener('click', () => {
+    const selected = choiceGroup.querySelector('input[name="quiz-choice"]:checked');
     if (!selected) {
       alert('Please select an answer');
       return;
     }
-    onAnswer(selected.value);
+    handleAnswer(selected.value);
   });
-  actions.appendChild(btn);
-  wrapper.appendChild(actions);
 
   container.appendChild(wrapper);
 
-  // focus the first choice for keyboard users
-  const firstLabel = list.querySelector('.choice-label');
-  if (firstLabel) firstLabel.focus();
+  const firstChoice = choiceGroup.querySelector('.choice-label');
+  if (firstChoice) firstChoice.focus();
+}
 
-  // If user presses Enter without focusing a specific choice, allow Enter to trigger Next
-  container.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      const active = document.activeElement;
-      if (active && active.classList && active.classList.contains('choice-label')) {
-        // if a choice is focused, simulate click
-        active.click();
-      } else {
-        // otherwise, trigger next
-        btn.click();
-      }
-    }
-  });
+function handleAnswer(selectedValue) {
+  const currentQuestion = state.questions[state.index];
+  const correctAnswer = currentQuestion.answer || currentQuestion.correctAnswer || '';
+
+  if (String(selectedValue).trim() === String(correctAnswer).trim()) {
+    state.correct += 1;
+  }
+
+  state.index += 1;
+
+  if (state.index >= state.questions.length) {
+    renderResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function renderResult() {
+  const container = $('quiz-content-area');
+  if (!container) return;
+
+  updateProgress(state.questions.length, state.questions.length);
+
+  const percent = state.questions.length
+    ? Math.round((state.correct / state.questions.length) * 100)
+    : 0;
+
+  container.innerHTML = `
+    <div class="quiz-result">
+      <h3>Quiz complete!</h3>
+      <p>You answered <strong>${state.correct}</strong> / <strong>${state.questions.length}</strong> correctly.</p>
+      <p>Total score: <strong>${percent}%</strong></p>
+      <p><a class="button" href="dashboard.html">Back to dashboard</a></p>
+    </div>
+  `;
 }
 
 function escapeHtml(str) {
@@ -153,12 +162,35 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  const app = ensureApp();
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+async function loadQuiz(quizId) {
+  const ref = doc(db, 'quizzes', quizId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    throw new Error('Quiz not found');
+  }
 
-  onAuthStateChanged(auth, async (user) => {
+  const quiz = snap.data();
+  state.quiz = quiz;
+  state.questions = quiz.questions || [];
+  state.index = 0;
+  state.correct = 0;
+
+  $('quiz-title').textContent = quiz.title || 'Quiz';
+  const meta = $('quiz-meta');
+  if (meta && typeof quiz.created_at?.toDate === 'function') {
+    meta.textContent = `Generated ${quiz.created_at.toDate().toLocaleString()}`;
+  }
+
+  if (!state.questions.length) {
+    $('quiz-content-area').innerHTML = '<p>This quiz has no questions yet.</p>';
+    return;
+  }
+
+  renderQuestion();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  onAuthStateChanged(auth, (user) => {
     if (!user) {
       window.location.replace('index.html');
       return;
@@ -166,55 +198,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const quizId = getQueryParam('id');
     if (!quizId) {
-      $('quiz-content-area').innerHTML = '<p>No quiz id provided in URL.</p>';
+      $('quiz-content-area').innerHTML = '<p>Missing quiz id in the URL.</p>';
       return;
     }
 
-    try {
-      const ref = doc(db, 'quizzes', quizId);
-      const snap = await getDoc(ref);
-      if (!snap.exists()) {
-        $('quiz-content-area').innerHTML = '<p>Quiz not found.</p>';
-        return;
-      }
-
-      const quiz = snap.data();
-      const questions = quiz.questions || [];
-      $('quiz-title').textContent = quiz.title || 'Quiz';
-
-      let index = 0;
-      let correct = 0;
-
-  const container = $('quiz-content-area');
-
-      function handleAnswer(selectedValue) {
-        const q = questions[index];
-        const correctAnswer = q.answer || q.correctAnswer || '';
-        if (String(selectedValue).trim() === String(correctAnswer).trim()) {
-          correct += 1;
-        }
-        index += 1;
-        if (index >= questions.length) {
-          // Show score
-          const progressFill = document.getElementById('progress-fill');
-          if (progressFill) progressFill.style.width = '100%';
-          container.innerHTML = `\n            <div class="quiz-result">\n              <h3>Finished</h3>\n              <p>Your score: <strong>${correct} / ${questions.length}</strong></p>\n              <p><a href=\"dashboard.html\" class=\"button\">Back to dashboard</a></p>\n            </div>`;
-        } else {
-          renderQuestion(container, questions[index], index, questions.length, handleAnswer);
-        }
-      }
-
-      if (!questions.length) {
-        container.innerHTML = '<p>This quiz has no questions yet.</p>';
-        return;
-      }
-
-      // Render first question
-      renderQuestion(container, questions[index], index, questions.length, handleAnswer);
-
-    } catch (err) {
-      console.error(err);
-      $('quiz-container').innerHTML = '<p>Failed to load quiz. Check console for details.</p>';
-    }
+    loadQuiz(quizId).catch((err) => {
+      console.error('Failed to load quiz', err);
+      $('quiz-content-area').innerHTML = '<p>Unable to load this quiz. Please try again later.</p>';
+    });
   });
 });

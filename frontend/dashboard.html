@@ -20,11 +20,27 @@
     </header>
 
     <main>
-        <section class="card">
-            <h2>Your Quiz Content</h2>
-            <p>This area is protected. Once authenticated, we'll stream quiz data here.</p>
-            <div id="quiz-content-placeholder" class="placeholder">
-                <p><em>Quiz content will appear here after you log in.</em></p>
+        <section class="card" id="upload-card">
+            <h2>Upload PDF to SmartQuiz</h2>
+            <p>Choose a PDF syllabus, reviewer, or scanned notes. Files upload directly to your S3 bucket.</p>
+            <label class="file-input">
+                <input type="file" id="pdf-upload" accept="application/pdf,.pdf">
+                <span>Select PDF</span>
+            </label>
+            <button id="s3-upload-btn" class="primary block">Upload to S3</button>
+            <p id="upload-status" class="helper-text">Awaiting file selection…</p>
+        </section>
+
+        <section class="card" id="quiz-card">
+            <div class="card-header">
+                <div>
+                    <h2>Your Quizzes</h2>
+                    <p class="helper-text">Generated quizzes appear below instantly whenever the backend writes to Firestore.</p>
+                </div>
+                <span id="quiz-status" class="status-pill">Listening…</span>
+            </div>
+            <div id="quiz-list" class="quiz-list">
+                <p>Waiting for quiz data…</p>
             </div>
         </section>
     </main>
@@ -36,6 +52,9 @@
     <script>
         window.SMARTQUIZ_BUILD_VERSION = window.SMARTQUIZ_BUILD_VERSION || '2025-11-14-a';
     </script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1525.0.min.js"></script>
     <script type="module" src="js/auth.js?v=2025-11-14-a"></script>
+    <script type="module" src="js/dashboard.js?v=2025-11-14-a"></script>
+    <script type="module" src="scripts/upload.js?v=2025-11-14-a"></script>
 </body>
 </html>

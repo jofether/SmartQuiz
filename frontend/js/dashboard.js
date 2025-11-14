@@ -1,4 +1,4 @@
-// dashboard.js — listens for quizzes for the current user and renders them
+// dashboard.js — realtime quiz list for the authenticated user
 import { firebaseConfig } from './firebase-config.js?v=2025-11-14-a';
 import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js';
 import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
@@ -8,44 +8,57 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
-  doc,
-  getDoc
+  onSnapshot
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js';
 
 const $ = (id) => document.getElementById(id);
 
-function ensureApp() {
-  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  return app;
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const state = {
+  unsubscribe: null
+};
+
+const quizContainer = $('quiz-list');
+const statusEl = $('quiz-status');
+
+function setStatus(message, variant = 'info') {
+  if (!statusEl) return;
+  statusEl.textContent = message;
+  statusEl.className = `status-pill status-${variant}`;
 }
 
 function renderQuizList(docs) {
-  const container = $('quiz-list');
-  container.innerHTML = '';
+  if (!quizContainer) return;
+  quizContainer.innerHTML = '';
+
   if (!docs.length) {
-    container.innerHTML = '<p>No quizzes yet. Upload a PDF to generate one.</p>';
+    quizContainer.innerHTML = '<p>No quizzes yet. Upload a PDF to generate one.</p>';
     return;
   }
 
   const list = document.createElement('div');
   list.className = 'quiz-list-items';
 
-  docs.forEach((d) => {
-    const item = document.createElement('div');
+  docs.forEach((docSnap) => {
+    const quiz = docSnap.data();
+    const title = quiz.title || 'Untitled Quiz';
+    const questionCount = (quiz.questions || []).length;
+
+    const item = document.createElement('article');
     item.className = 'quiz-item';
-    const title = d.data().title || 'Untitled Quiz';
-    const id = d.id;
     item.innerHTML = `
-      <div>
+      <div class="quiz-item-summary">
         <strong>${escapeHtml(title)}</strong>
-        <p>${(d.data().questions || []).length} questions</p>
+        <p>${questionCount} ${questionCount === 1 ? 'question' : 'questions'}</p>
       </div>
-      <div>
-        <a class="button" href="quiz.html?id=${encodeURIComponent(id)}" aria-label="Take quiz ${escapeHtml(title)}">Take quiz</a>
+      <div class="quiz-item-actions">
+        <a class="button" href="quiz.html?id=${encodeURIComponent(docSnap.id)}" aria-label="Take quiz ${escapeHtml(title)}">Take quiz</a>
       </div>
     `;
-    // Make the whole item keyboard-focusable and support Enter/Space to open the link
+
     item.tabIndex = 0;
     item.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter' || ev.key === ' ') {
@@ -54,13 +67,13 @@ function renderQuizList(docs) {
         if (link) link.click();
       }
     });
+
     list.appendChild(item);
   });
 
-  container.appendChild(list);
+  quizContainer.appendChild(list);
 }
 
-// Basic HTML-escape helper
 function escapeHtml(str) {
   return (str || '')
     .replace(/&/g, '&amp;')
@@ -71,31 +84,38 @@ function escapeHtml(str) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  const app = ensureApp();
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-
   onAuthStateChanged(auth, (user) => {
     if (!user) {
-      // protectPage in auth.js will redirect, but be safe here.
+      setStatus('Redirecting…', 'muted');
       window.location.replace('index.html');
       return;
     }
 
-    // Query quizzes where ownerId == current user uid
-    const q = query(
+    setStatus('Live updates enabled', 'success');
+
+    if (state.unsubscribe) {
+      state.unsubscribe();
+      state.unsubscribe = null;
+    }
+
+    const quizzesQuery = query(
       collection(db, 'quizzes'),
       where('ownerId', '==', user.uid),
       orderBy('created_at', 'desc')
     );
 
-    // Real-time listener
-    onSnapshot(q, (snapshot) => {
-      renderQuizList(snapshot.docs);
-    }, (err) => {
-      console.error('Failed to listen to quizzes:', err);
-      const container = $('quiz-list');
-      container.innerHTML = '<p>Unable to load quizzes (check console).</p>';
-    });
+    state.unsubscribe = onSnapshot(
+      quizzesQuery,
+      (snapshot) => {
+        renderQuizList(snapshot.docs);
+      },
+      (error) => {
+        console.error('Failed to stream quizzes', error);
+        setStatus('Listener error', 'error');
+        if (quizContainer) {
+          quizContainer.innerHTML = '<p>Unable to load quizzes. Check console.</p>';
+        }
+      }
+    );
   });
 });

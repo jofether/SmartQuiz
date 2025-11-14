@@ -97,6 +97,17 @@ python -m http.server 5500
 
 1. Visit `http://localhost:5500`, click **Sign in with Google** (mock), upload a PDF/text file, and the UI will call the dev API, display pipeline logs, and render the generated quiz.
 
+### 4. Firestore indexes (required for the dashboard)
+
+- The dashboard query combines `where('ownerId' == user.uid)` with `orderBy('created_at', 'desc')`, which requires a composite index.
+- The repo now ships with `firestore.indexes.json`; deploy it so Firestore can serve the listener without errors:
+
+```powershell
+firebase deploy --only firestore:indexes
+```
+
+- Wait for the index to finish building in the Firebase console before reloading the dashboard. Without this deployment, the listener logs `Failed to stream quizzes` with a “query requires an index” error.
+
 ## Data Flow Summary
 
 1. User uploads PDF → stored in S3 bucket (`smartquiz-input-*`).

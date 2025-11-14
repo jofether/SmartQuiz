@@ -20,13 +20,20 @@
   </header>
 
   <main>
-    <section class="card">
-      <div id="quiz-container">
-        <!-- Quiz UI injected by quiz-taker.js -->
-        <div class="progress-container" aria-hidden="true">
-          <div id="progress-fill" class="progress-fill" style="width:0%"></div>
-        </div>
-        <div id="quiz-content-area"></div>
+    <section class="card" id="quiz-container">
+      <div class="progress-container" aria-hidden="true">
+        <div
+          id="progress-fill"
+          class="progress-fill"
+          style="width:0%"
+          role="progressbar"
+          aria-valuenow="0"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        ></div>
+      </div>
+      <div id="quiz-content-area" class="quiz-content-area">
+        <p>Loading quiz…</p>
       </div>
     </section>
   </main>
