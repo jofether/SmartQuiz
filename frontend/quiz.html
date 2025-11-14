@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SmartQuiz — Take Quiz</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="robots" content="noindex">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">SmartQuiz — Quiz Player</p>
+      <h1 id="quiz-title">Loading…</h1>
+      <p id="quiz-meta"></p>
+    </div>
+    <div class="hero-actions">
+      <a href="dashboard.html" class="ghost">Back to Dashboard</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div id="quiz-container">
+        <!-- Quiz UI injected by quiz-taker.js -->
+        <div class="progress-container" aria-hidden="true">
+          <div id="progress-fill" class="progress-fill" style="width:0%"></div>
+        </div>
+        <div id="quiz-content-area"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 SmartQuiz</p>
+  </footer>
+
+  <script>
+    window.SMARTQUIZ_BUILD_VERSION = window.SMARTQUIZ_BUILD_VERSION || '2025-11-14-a';
+  </script>
+  <script type="module" src="js/auth.js?v=2025-11-14-a"></script>
+  <script type="module" src="js/quiz-taker.js?v=2025-11-14-a"></script>
+</body>
+</html>

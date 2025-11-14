@@ -9,7 +9,9 @@ class SmartQuizApp {
             pipelineLog: []
         };
 
-        this.apiBaseUrl = window.SMARTQUIZ_API_BASE_URL || 'http://localhost:8000/api';
+    const fallbackLocalApi = 'http://localhost:8000/api';
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    this.apiBaseUrl = window.SMARTQUIZ_API_BASE_URL || (isLocalhost ? fallbackLocalApi : null);
 
         this.elements = {
             loginBtn: document.getElementById('login-btn'),
@@ -28,13 +30,13 @@ class SmartQuizApp {
     }
 
     init() {
-        this.elements.loginBtn.addEventListener('click', () => this.handleLogin());
-        this.elements.logoutBtn.addEventListener('click', () => this.handleLogout());
-        this.elements.uploadBtn.addEventListener('click', () => this.handleUpload());
-        this.elements.backBtn.addEventListener('click', () => this.hideQuizView());
+    this.elements.loginBtn?.addEventListener('click', () => this.handleLogin());
+    this.elements.logoutBtn?.addEventListener('click', () => this.handleLogout());
+    this.elements.uploadBtn?.addEventListener('click', () => this.handleUpload());
+    this.elements.backBtn?.addEventListener('click', () => this.hideQuizView());
 
         // Listen to file selection to update helper text/log
-        this.elements.fileInput.addEventListener('change', (event) => {
+    this.elements.fileInput?.addEventListener('change', (event) => {
             const fileName = event.target.files?.[0]?.name;
             if (fileName) {
                 this.appendLog(`Selected file: ${fileName}`);
@@ -42,7 +44,7 @@ class SmartQuizApp {
         });
 
         // Prefetch quizzes if running without auth
-        this.fetchQuizzes();
+    this.fetchQuizzes();
     }
 
     handleLogin() {
@@ -139,6 +141,11 @@ class SmartQuizApp {
     }
     async fetchQuizzes() {
         try {
+            if (!this.apiBaseUrl) {
+                this.appendLog('API base URL not configured for production. Set window.SMARTQUIZ_API_BASE_URL to your backend endpoint.');
+                return;
+            }
+
             const response = await fetch(`${this.apiBaseUrl}/quizzes`);
             if (!response.ok) {
                 throw new Error('Failed to load quizzes');
@@ -158,6 +165,11 @@ class SmartQuizApp {
     }
 
     async uploadToApi(file) {
+        if (!this.apiBaseUrl) {
+            alert('Backend API endpoint is not configured for this environment.');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', file);
 

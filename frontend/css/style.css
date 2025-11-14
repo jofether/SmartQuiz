@@ -165,3 +165,70 @@ footer {
     margin-top: 2rem;
     color: #777;
 }
+
+/* Quiz choice styles and accessibility */
+.choices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.choice-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid #ececf5;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.06s ease;
+}
+
+.choice-label input[type="radio"] {
+    /* visually hide but keep accessible */
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    position: absolute;
+}
+
+.choice-label:hover {
+    background: #fbfbff;
+    transform: translateY(-1px);
+}
+
+.choice-label:focus-within {
+    box-shadow: 0 6px 18px rgba(74,74,138,0.12);
+    outline: 3px solid rgba(74,74,138,0.12);
+}
+
+.choice-label.selected {
+    background: linear-gradient(90deg, rgba(74,74,138,0.08), rgba(109,109,182,0.04));
+    border-color: rgba(74,74,138,0.2);
+}
+
+/* Progress bar */
+.progress-container {
+    height: 12px;
+    background: #eef0fb;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 1rem 0 0.5rem;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg,#4a4a8a,#6d6db6);
+    width: 0%;
+    transition: width 300ms ease;
+}
+
+/* Result screen */
+.quiz-result { text-align: center; }
+
+/* Make buttons focus-visible for keyboard users */
+button:focus, a.button:focus {
+    outline: 3px solid rgba(74,74,138,0.14);
+    outline-offset: 2px;
+}
