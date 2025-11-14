@@ -1,0 +1,9 @@
+# This file lists the Python dependencies for the AWS Lambda function.
+# When deploying the Lambda function, these packages need to be bundled with the code.
+
+boto3>=1.28.0
+google-cloud-firestore>=2.13.0
+PyPDF2>=3.0.0
+requests>=2.31.0
+Flask>=3.0.0
+flask-cors>=4.0.0

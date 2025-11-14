@@ -1,0 +1,259 @@
+﻿ABSTRACT
+The proliferation of digital education and e-learning platforms has highlighted a significant bottleneck in content delivery: the time-consuming, manual creation of assessment materials. This research addresses this challenge through the design, implementation, and evaluation of SmartQuiz, a cloud-native smart quiz platform. The system's primary innovation is its ability to automatically generate interactive quizzes from user-uploaded PDF documents, supporting both digitally-native text and scanned, image-based content.
+This project implements a decoupled, event-driven, and hybrid-cloud architecture. The system leverages Firebase for its robust Backend-as-a-Service (BaaS) capabilities, including user authentication, real-time database management using Firestore, and frontend web hosting. Amazon Web Services (AWS) S3 is integrated as a highly-scalable, cost-effective object storage solution for the PDF files.
+The core logic is orchestrated by a serverless backend service. Upon file upload to S3, an event triggers an AI-driven pipeline that first employs Optical Character Recognition (OCR)—using services like AWS Textract—to extract text from any images within the PDF. This is combined with digitally extracted text to create a comprehensive script. This complete text is then communicated to a Natural Language Processing (NLP) model to generate a set of questions and answers, which are then populated in the Firebase database. The frontend application, built with HTML/CSS/JS, provides a seamless, real-time user experience for file management, quiz-taking, and results viewing.
+This paper demonstrates a functional, advanced proof-of-concept that successfully integrates Google and Amazon cloud services to create an intelligent and scalable application. The platform provides a practical solution for educators by automating quiz creation from all document types and offers a powerful on-demand study tool for learners.
+
+
+CHAPTER I
+INTRODUCTION
+
+        This chapter provides the formal foundation for the study. It begins with the Background of the Study, which establishes the educational and technological context. It then defines the Statement of the Problem, detailing the specific challenges and gaps this project addresses. This is followed by the Objectives of the Study, which lists the project's concrete goals. The chapter then clarifies the project's boundaries in the Scope and Limitations section, and concludes with the Significance of the Study, outlining its potential impact and contributions.
+1.1 Background of the Study
+The paradigm of modern education is increasingly shifting toward digital platforms and e-learning environments. This transition, accelerated by the global need for remote accessibility, has underscored the importance of scalable, efficient, and effective digital assessment tools. Traditional online quiz platforms have successfully digitized the assessment process, but they largely replicate the traditional workflow: the cognitive load of content creation remains squarely on the educator or trainer. This manual creation of quizzes is a significant bottleneck—a time-consuming and non-scalable process that often hinders the adoption of continuous assessment strategies.
+Concurrently, two distinct technological fields have matured to offer a novel solution. First, cloud computing, particularly through Backend-a-a-Service (BaaS) platforms like Firebase and Infrastructure-as-a-Service (IaaS) components like Amazon S3, provides the scalable infrastructure, real-time data handling, and robust storage necessary to power modern web applications.
+Second, advancements in Artificial Intelligence (AI), specifically in Natural Language Processing (NLP) and Optical Character Recognition (OCR), have made it possible for algorithms to parse, understand, and reformulate unstructured content. NLP allows for the generation of assessment questions from text, while OCR technology bridges the gap between physical and digital, allowing machines to read and extract text from scanned pages and images.
+This study bridges the gap between these technologies. It proposes the development of a cloud-native platform that not only hosts and delivers quizzes but also intelligently generates them from source materials. By integrating OCR, the platform is capable of handling both digitally-native documents and scanned, image-based files. This innovation aligns with the need for smarter, more responsive educational tools, fundamentally shifting the role of the educator from a content creator to a content curator.
+1.2 Statement of the Problem
+The central problem addressed by this research is the inefficiency and scalability barrier of manual quiz creation in digital learning environments. While e-learning platforms are common, the process of content creation remains a significant bottleneck. Educators, corporate trainers, and students lack a unified, intelligent tool that can seamlessly convert their full range of study materials (including both digital files and scanned paper documents) into interactive practice assessments.
+This core problem leads to several critical sub-problems:
+* Time Constraint: Manual assessment creation is an exceptionally time-consuming task. Educators and trainers must not only select key concepts but also formulate valid questions, write plausible distractors, and input them into a system. This administrative burden often comes at the expense of time that could be spent on direct instruction or student interaction.
+* The "Scan Barrier": A significant portion of academic and training material is not digitally-native; it exists as scanned book chapters, old lecture notes, or image-based handouts. Standard quiz generators fail to process these materials, leaving a "digital divide" and forcing users back to manual transcription.
+* Assessment Scarcity: As a direct result of the time and cognitive costs, there is often a scarcity of on-demand, formative assessments. Students are left with limited practice opportunities. They lack the ability to generate "practice-on-demand" from their entire library of study materials, which is a key component of active recall and effective learning.
+* Technological Fragmentation: Existing solutions are fragmented. A user typically employs separate, non-integrated systems: a cloud drive for storing documents, a separate platform for taking quizzes, and no automated bridge between the two. This "app-switching" creates friction and prevents a seamless workflow from source material to learning assessment.
+This project aims to solve these problems by creating a single, integrated, and intelligent platform that automates the entire quiz-generation pipeline for all common document types.
+1.3 Objectives of the Study
+The primary objective of this project is to design, develop, and evaluate a cloud-native web application that automatically generates interactive quizzes from user-uploaded PDF documents, including those containing image-based text.
+The secondary objectives are as follows:
+1. To architect a hybrid-cloud system utilizing Firebase for real-time database operations, user authentication, and web application hosting.
+2. To integrate Amazon Web Services (AWS) S3 as a scalable, secure, and cost-effective object storage solution for user-uploaded PDF files.
+3. To design and integrate an Optical Character Recognition (OCR) pipeline (e.g., using AWS Textract) to extract text from image-based content within uploaded PDF documents.
+4. To implement a backend service (using Node.js or Python Flask) that orchestrates the quiz generation pipeline, from file upload to data storage.
+5. To integrate a third-party AI or a pre-trained Natural Language Processing (NLP) model to parse the extracted text and generate multiple-choice questions and answers.
+6. To develop a user-friendly frontend (using HTML/CSS/JS) that allows users to manage, take, and review their quizzes in real-time.
+1.4 Scope and Limitations
+To ensure the project is focused and achievable, its boundaries are clearly defined. This section outlines what the system will and will not be designed to do.
+1.4.1 Scope
+The scope of this project is to deliver a functional, proof-of-concept web application. The core deliverables include:
+* User Management: The system will provide secure user registration and login functionality using Firebase Authentication.
+* File Upload and Storage: The platform will allow authenticated users to upload PDF (.pdf) documents. These files will be securely stored in a dedicated AWS S3 bucket.
+* Comprehensive Text Extraction: The system will support both machine-readable and image-based (scanned) PDFs. It will utilize an OCR service (like AWS Textract) to extract text from images, ensuring all document types are processed.
+* Core AI Pipeline: The system will use an integrated NLP model to automatically generate a set of multiple-choice questions and their corresponding answers from the extracted text.
+* Quiz Interaction: Users will be able to take the quizzes generated from their own documents. The system will present the questions, record the user's answers, and provide an immediate score upon completion.
+1.4.2 Limitations
+This study is bound by several technical and practical limitations to maintain a clear focus on the primary research objectives:
+* Input Format: While the system handles both text and image-based PDFs, its support is limited to the .pdf format. Other file formats such as .docx, .pptx, or .txt are outside the current scope.
+* Question Type: The automatic question generation will be limited exclusively to multiple-choice questions. Other, more complex formats such as fill-in-the-blank, short-answer, or essay questions will not be generated.
+* Content and Quality: The quality, accuracy, and relevance of the generated questions are directly dependent on the clarity of the source text (both digital and scanned) and the capabilities of the third-party AI model.
+* Human-in-the-Loop: The system will not include a feature for educators to manually review, edit, or approve the AI-generated questions before they are made available.
+* Language: The integrated NLP and OCR models will be optimized for English-language documents. Support for other languages is not a planned feature.
+* Handwriting Recognition: The OCR functionality is limited to printed or typed text within images. It will not accurately process handwritten notes or annotations.
+1.5 Significance of the Study
+This project holds significant value for multiple stakeholders and contributes to the fields of cloud computing and educational technology.
+* For Educators and Trainers: This platform provides a "force multiplier," enabling them to instantly create a library of formative assessments from their entire range of existing curricula—including new digital handouts and old scanned book chapters. This drastically reduces preparation time and administrative load, allowing them to focus on teaching.
+* For Students and Learners: It offers a powerful, on-demand self-study tool. It empowers learners to turn any set of notes, research paper, or textbook chapter (scanned or digital) into an active-recall practice session, thereby deepening their learning and improving retention.
+* For Cloud Computing Education: This paper serves as a practical, documented case study of a modern, hybrid-cloud, and serverless architecture. It demonstrates how to effectively combine the distinct strengths of Google's (Firebase) and Amazon's (AWS) ecosystems to build a sophisticated, event-driven, and intelligent application.
+* Contribution to E-Learning: By solving the "scan barrier," this project offers a more inclusive and practical solution than most existing tools. It demonstrates a complete pipeline from any document (physical or digital) to an interactive learning experience, which is a significant step forward in creating truly seamless digital learning environments.
+1.6  Definition of Terms
+The following terms are defined to ensure a clear and consistent understanding of the concepts as they are used within this study:
+* Ablation Study: An experimental procedure used in this study's methodology to validate the contribution of a specific component. This involves benchmarking the full platform (Digital + OCR) against a baseline version with the OCR component removed (Digital-Only).
+* Amazon Web Services (AWS): A public cloud provider whose Infrastructure-as-a-Service (IaaS) components, specifically S3 for storage and Textract for OCR, are used in this project's architecture.
+* Automatic Question Generation (AQG): The specific sub-field of Natural Language Processing concerned with automatically creating questions from source text. This study uses a Generative AI approach to AQG.
+* Backend-as-a-Service (BaaS): A cloud computing model that provides developers with managed backend infrastructure. In this study, Firebase is used as the BaaS to provide authentication, a real-time database (Firestore), and web hosting.
+* Cloud-Native: An architectural approach that uses cloud services (like BaaS, IaaS, and serverless functions) to build and run applications. This project proposes a cloud-native platform.
+* Event-Driven Architecture: A system design where actions are triggered by events. In this project, the file upload to AWS S3 is the "event" that automatically "triggers" the AWS Lambda function, initiating the quiz generation pipeline.
+* Firebase: A Google-owned application development platform used as the BaaS component in this study. It provides the user authentication, Firestore database, and frontend web hosting.
+* Formative Assessment: Low-stakes or informal assessment tools, such as practice quizzes, that monitor student learning and provide ongoing feedback. This project aims to automate the creation of these assessments.
+* Generative AI: A class of artificial intelligence models, such as Large Language Models (LLMs), capable of generating new content (e.g., text, images) rather than just classifying data. In this study, a generative model is used to create novel quiz questions from the extracted text.
+* Golden Set: A term used in the methodology (Chapter 3) to refer to the set of high-quality, human-written questions created by the researchers. This set serves as the "ground truth" for evaluating the quality of the AI-generated questions.
+* Hybrid-Cloud: An architecture that combines services from two or more different public or private cloud providers. This project implements a hybrid-cloud model by integrating Google's Firebase with Amazon's Web Services (AWS).
+* Infrastructure-as-a-Service (IaaS): A cloud computing model that provides virtualized computing resources over the internet. In this study, AWS S3 is used as the IaaS component for scalable object storage.
+* JSON (JavaScript Object Notation): A lightweight, text-based data format. In this project, it is the specified output structure for the Generative AI, which returns a "JSON Formatted Question Array" to be stored in the database.
+* Natural Language Processing (NLP): A field of artificial intelligence focused on the interaction between computers and human language. In this study, it refers to the Generative AI model that understands the source text and generates the questions.
+* Optical Character Recognition (OCR): An AI technology that extracts text from images. In this project, it is the key technology (via AWS Textract) used to read text from scanned, image-based PDF documents.
+* Pipeline: Refers to the end-to-end, automated workflow. In this project, the "document-to-assessment pipeline" describes the entire process from a user's PDF upload to the final interactive quiz being available.
+* "Scan Barrier": A term used in this paper to describe the common problem where digital tools fail because they cannot process scanned, image-based documents. This project's integration of OCR is designed to solve this barrier.
+* Serverless: A cloud-native development model that allows developers to run applications without managing the underlying server infrastructure. In this project, the core logic is deployed as a serverless AWS Lambda function.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CHAPTER II
+REVIEW OF RELATED LITERATURE
+This chapter reviews existing platforms, architectures, and algorithms relevant to the problem of automated, on-demand content generation for educational assessment. It aims to establish the context for the proposed research by first outlining the significant pedagogical and logistical challenges associated with manual quiz creation. Subsequently, it critically examines the strengths and weaknesses of current e-learning platforms, including manual-entry systems (e.g., Kahoot!, Quizlet) and recent advancements in Generative AI for question generation. This analysis leads to a synthesis, presented as a literature map, that precisely delineates the research gap this thesis intends to address: the lack of a fully-integrated, end-to-end, cloud-native platform that maps unstructured, multimodal documents (including scanned, image-based PDFs) to a structured, interactive quiz. The chapter then discusses the theoretical foundations underpinning the proposed hybrid-cloud architecture, drawing upon established concepts in cloud service models (BaaS, IaaS), Natural Language Processing (NLP), and Optical Character Recognition (OCR). Finally, it reviews standard experimental methodologies for evaluating the quality of generated content. Over 90% of the newly introduced supporting literature is sourced from publications within the last five years (2020-2025) to ensure relevance and timeliness.
+2.1 Theoretical Framework
+This part discusses the fundamental theories and principles that serve as the foundation of the study. These include cloud-native architectural patterns, particularly the hybrid-cloud model, and the AI theories (NLP and OCR) that enable the intelligent content pipeline.
+* Cloud-Native & Hybrid-Cloud Architecture: The project's architecture is grounded in modern cloud-native design. It rejects a monolithic approach in favor of a hybrid-cloud, service-oriented architecture. This theory posits that for complex applications, the most efficient solution is to combine best-of-breed services by integrating different cloud providers. This study pairs Backend-as-a-Service (BaaS) with Infrastructure-as-a-Service (IaaS). Firebase (a BaaS) is used for its "managed, frontend-centric services" (e.g., Auth, Realtime Database) that "drastically reduce development time for user-facing applications" (Google, 2024). This is augmented with specialized AWS (IaaS) services (S3, Textract) for tasks where they are the industry standard—scalable object storage and high-fidelity OCR. This design is event-driven, with services like AWS Lambda acting as the "serverless glue" (Richards, 2021) that orchestrates the data flow between these distinct cloud ecosystems.
+* Generative AI & Automatic Question Generation (AQG): To generate the quizzes, this study is founded on state-of-the-art Transformer-based Natural Language Processing (NLP). This marks a shift from older, rule-based AQG systems, which required complex, hand-crafted linguistic templates. The current approach is based on large-scale, pre-trained models such as the "Text-to-Text Transfer Transformer" (T5) (Raffel et al., 2020) and subsequent Generative Pre-trained Transformers (GPTs). These models are trained on a "prompt-based" or "in-context learning" paradigm (Brown et al., 2020). This means that instead of training a specific model for question generation, we can simply "prompt" a general-purpose model with the source text and instruct it to return a valid JSON of questions and answers. This "in-context learning" ability is the theoretical-computational engine that makes the project's core feature viable.
+* Optical Character Recognition (OCR) & Document AI: To handle scanned, image-based PDFs, the framework incorporates modern Document AI theory. Traditional OCR was a brittle process that merely extracted text strings from images, often failing on complex layouts. Modern, AI-driven OCR services like AWS Textract are "layout-aware" and "structure-aware." They don't just "see text"; they "see a document." This is demonstrated in their ability to differentiate "page, line, and word" levels and identify "tables, forms, and key-value pairs" (Amazon, 2024). This theoretical shift from simple text extraction to structural document understanding is critical for providing the NLP model with clean, coherent, and correctly ordered text, even from a "noisy" scanned image.
+
+
+2.2 Related Concepts
+This section introduces key concepts relevant to the research, beginning with the core problem of the educational "content bottleneck," followed by the technical concepts underpinning the proposed cloud-based solution.
+* Formative Assessment and the "Content Bottleneck": The core problem motivating this research is the substantial cost and time associated with creating formative assessments. Formative assessments (e.g., low-stakes quizzes) are widely recognized as critical pedagogical tools for "reinforcing active recall and improving long-term knowledge retention" (Roediger & Karpicke, 2006). However, their creation presents a significant "content bottleneck" for educators. They must manually identify key concepts, write valid questions, and formulate plausible "distractors," a process that is "time-consuming, non-scalable, and a major barrier" to their widespread adoption (Attali & Arieli-Attali, 2015). This logistical pressure underscores the need for more efficient automated tools.
+* Cloud Service Models (BaaS, IaaS, Serverless): The difficulty in building a system to solve this problem is rooted in the complexity of modern web applications. A traditional, monolithic server architecture would require developers to manually manage user databases, authentication protocols, real-time data synchronization, and scalable file storage. Modern cloud models abstract this complexity:
+   * Backend-as-a-Service (BaaS): Firebase is a BaaS that provides "ready-made backend infrastructure," handling user login (Auth) and database (Firestore) synchronization with the frontend, "freeing the developer to focus on the client-side experience" (Google, 2024).
+   * Infrastructure-as-a-Service (IaaS): AWS S3 is the canonical IaaS component for object storage, providing "near-infinite scalability and durability" for file-centric tasks (Amazon, 2024).
+   * Serverless (Functions-as-a-Service): AWS Lambda is a serverless function that "runs code without provisioning servers" (AWS, 2024). It acts as the "event-driven glue," (e.g., "On file upload to S3, run this Python code").
+* Text Extraction vs. Optical Character Recognition (OCR): A core technical concept is the "dual-path" approach to text extraction. A PDF can contain text in two forms: machine-readable text (digital text strings) and image-based text (a scan of a page). A standard library (like PyPDF2 in Python) can "easily parse the machine-readable text" but is "completely blind to the scanned image content." Conversely, an OCR service like AWS Textract can "read the text from the image" but is unnecessary for digital text. A robust system, therefore, must conceptually distinguish and handle both content types to be effective.
+2.3 Related Literature
+To overcome the limitations of manual creation, various e-learning tools and techniques have been proposed. This part reviews prior works and studies related to the research, including manual-entry platforms, rule-based generation systems, and modern AI-driven approaches.
+* 2.3.1 Manual-Entry E-Learning Platforms Platforms like Kahoot!, Quizlet, and Quizizz represent the most established approach. They treat the platform as a "receptacle and delivery mechanism" for user-generated content. Their primary strengths lie in their "highly-gamified, real-time, and social" interfaces, which "increase student engagement" (Wang & Tahir, 2020). However, their weakness is their 100% reliance on manual content creation. They "solve the delivery problem, but not the creation problem." They are fundamentally unimodal (text-entry) and cannot process or incorporate source materials like PDFs.
+* 2.3.2 Rule-Based and Early AQG Systems Academic research on Automatic Question Generation (AQG) has existed for decades. Early systems were "linguistically-heavy," relying on "manually-crafted rule-based templates" and "dependency parse-tree transformations" to convert declarative sentences into questions (Heilman & Smith, 2010). A key strength of these methods was their "interpretability" and grammatical precision. Despite this, their weakness was their "brittleness" and "domain-dependency." They struggled with complex text, required significant linguistic expertise to build, and were unable to generate plausible "distractors" (wrong answers) without separate, complex mechanisms.
+* 2.3.3 Generative AI and Large Language Models (LLMs) Generative AI & Large Language Models (LLMs) represent the latest trend. A new generation of commercial tools (e.g., QuizGecko) and academic studies now apply LLMs directly to the task of AQG (Subramanian et al., 2024). Their strength is their "zero-shot" flexibility; they can generate questions (and distractors) from any text prompt. However, their weakness stems from two issues. First, an Architectural Mismatch: most public tools are simple web wrappers that require copy-pasting text, not a fully integrated platform. Second, a crucial Modality Flaw: as predominantly text-based models, they "underperform in tasks where they are needed to perceive and reason visually" and are blind to the "scan barrier"—they cannot read the text from image-based PDFs, which form a large part of academic materials.
+* 2.3.4 Benchmarking Studies and Evaluation Metrics Evaluating the effectiveness of a novel AQG system necessitates rigorous quantitative assessment. The evaluation of generated questions typically employs metrics from both human-in-the-loop and automated approaches. Key Standard Performance Metrics include:
+   * Human-Based: Fluency (Is the question grammatically correct?), Relevance (Is the question relevant to the text?), and Answerability (Is the correct answer present/plausible?) (Dua et al., 2019).
+   * Automated Metrics: BLEU and ROUGE, which are metrics borrowed from machine translation to "measure the overlap" between the generated question and a human-written "reference" question (Lin, 2004). To specifically isolate the contribution of the multimodal aspect, a "Validation via Ablation Study" is the standard. This involves comparing the performance (e.g., number and quality of questions) of a text-only baseline against the full multimodal model (Text + OCR), where the difference in performance provides direct empirical evidence of the value added by the OCR modality.
+2.4 Literature Map
+        The review of existing techniques reveals a consistent research gap: the absence of an end-to-end, cloud-native platform capable of mapping a multimodal document (Text + Image PDF) to a ready-to-use, interactive quiz. This "document-to-assessment pipeline gap" remains largely unaddressed. To clarify this gap, the following table synthesizes and disambiguates related research areas:
+Technique Class & Citations
+	Modalities Used
+	Output Target
+	Key Limitation / Disambiguation (Why it doesn't fill our gap)
+	Manual Platforms
+
+
+(Wang & Tahir, 2020)
+	Manual Text Entry
+	Interactive Quiz
+	No Automation. Solves quiz delivery, not creation
+	Rule-Based AQG
+
+
+(Heilman & Smith, 2010)
+	Text Only
+	Text Questions
+	Not a Platform. Brittle, low-quality, cannot use images.
+	Generative AI (LLMs)
+
+
+(Subramanian et al., 2024)
+	Text Only
+	Text Questions
+	No "Visual Grounding." Requires copy-paste; cannot read scanned images (the "scan barrier").
+	Document OCR Tools
+
+
+(Amazon Textract)
+	Image/PDF
+	Raw Text
+	Not an End-to-End Solution. Solves text extraction, but does not generate a quiz or provide a platform.
+	Text-from-Image + LLM
+
+
+(Manual Pipeline)
+	Image -> Text + Text
+	Text Questions
+	Different Fusion. This is a manual, "copy-paste" pipeline. It is not an integrated, event-driven, cloud-native application.
+	Proposed Project Approach
+	Text + Image PDF
+	Interactive Quiz App
+	Fills the Gap. Aims to provide the first end-to-end (Multimodal PDF) $\rightarrow$ (Cloud-Hosted Quiz) application.
+	This synthesis clearly demonstrates that while various techniques touch upon aspects of quiz delivery, question generation, or text extraction, none address the specific, integrated, multimodal pipeline problem central to this thesis.
+2.5 Synthesis of the Review
+This review of the literature confirms that while formative assessment is a pedagogical imperative, its manual creation is a problem of significant educator cost. The "content bottleneck" remains a major barrier. The increasing complexity of modern e-learning, driven by the need for on-demand, personalized content, has rendered traditional manual creation a major bottleneck.
+Existing automated solutions, however, are fundamentally ill-equipped to address the specific, multimodal nature of educational materials. Manual platforms (like Kahoot!) are "blind" to source documents. Rule-based AQG systems are "brittle" and obsolete. The most recent advances, Generative AI (LLMs), are architecturally mismatched; they are "text-only" tools, not integrated platforms. Their critical lack of "visual grounding" means they are stopped by the "scan barrier," unable to process the vast library of scanned book chapters, old notes, and image-based handouts that educators and students rely on.
+The literature, therefore, points to a clear and unaddressed "document-to-assessment pipeline gap." As the literature map demonstrates, no existing tool provides an integrated, cloud-native platform to map the dual evidence of a document (Digital Text + Scanned Images) to its final, useful output (an interactive quiz). This thesis is directly positioned to fill this gap, arguing that a solution is now viable by synthesizing the mature, state-of-the-art components identified in this review.
+2.6 Conceptual Framework
+This section outlines the conceptual framework of the study based on the Input–Process–Output (IPO) model, which illustrates the logical flow of how the proposed platform receives, processes, and transforms user-uploaded documents into an interactive assessment. The framework presents how the system integrates cloud services (BaaS and IaaS) with AI (OCR and NLP) to perform automated quiz generation.
+* Input: The input of the study consists of the essential data sources that drive the algorithm’s operation: (1) The User's PDF Document, which may contain both machine-readable text and image-based (scanned) text, and (2) The User's Account, managed by Firebase Authentication, which provides the context for ownership and data storage.
+* Process: The process represents the event-driven, serverless workflow that transforms these inputs. This is the core of the cloud architecture:
+   1. The user's frontend (HTML/JS) uploads the PDF directly to AWS S3.
+   2. This S3 upload event automatically triggers an AWS Lambda function.
+   3. The Lambda function (running Python) downloads the PDF and performs a "dual-path" extraction: it calls AWS Textract (OCR) to get text from images while also using a library (e.g., PyPDF2) to extract digital text.
+   4. It combines both text sources into a single, clean script.
+   5. This script is sent as a prompt to a Generative AI (NLP) API (e.g., Google Gemini), with instructions to "return a JSON array of 10 multiple-choice questions."
+   6. The Lambda function receives the valid JSON and writes it to the Firebase Firestore database, tagged with the user's ID.
+* Output: The output of the framework is a real-time update on the user's frontend. The frontend, which has a "real-time listener" on the Firestore database, "sees" the new quiz JSON and instantly displays the Interactive Quiz to the user. The final output is a ranked score after the user completes the quiz, which is then written back to Firebase.
+Overall, this IPO-based conceptual framework demonstrates how a hybrid-cloud architecture can be applied to solve a complex educational problem. By integrating distinct cloud services in an event-driven flow, the framework establishes a cohesive pipeline from a "dead" document (PDF) to an "alive" assessment (Interactive Quiz). It supports the central objective of this study—to develop a functional, intelligent, and scalable platform for automated quiz generation.
+CHAPTER III
+METHODOLOGY
+This chapter discusses the research methods, design, and procedures that will be used to achieve the objectives of the study. It provides an overview of the developmental and experimental processes involved in designing, implementing, and evaluating the event-driven, hybrid-cloud platform for automated quiz generation. The methodology will ensure that the proposed system is systematically developed, tested, and validated using appropriate cloud services, data sources, and evaluation metrics.
+3.1 Research Design
+This study will employ a Developmental Research methodology, as the primary objective is the creation, implementation, and iterative refinement of a novel, cloud-native, document-to-assessment pipeline. This approach is appropriate as it will allow for the systematic construction of the platform while concurrently evaluating its efficacy through structured experiments.
+The developmental process will be validated using a controlled experimental design. This design is justified by the need to validate the platform's output quality against an established ground truth before assessing its generalizability. The platform's initial verification will utilize a controlled dataset of sample documents where the "golden" or ideal questions are known a priori, providing high internal validity. This will be supplemented by experiments on real-world "in-the-wild" documents (e.g., complex textbook chapters) to ensure external validity, allowing the researchers to assess how the platform's performance translates to complex scenarios.
+3.2 System Development Framework
+3.2.1 System Architecture and Workflow Overview
+The proposed platform's architecture is designed to generate interactive quizzes by mapping unstructured, multimodal PDF documents to a structured JSON output. The system's architecture is separated into two primary workflows: (1) a one-time, "Cloud Service Configuration" workflow to set up the infrastructure, and (2) a real-time, "Event-Driven Generation Pipeline" that activates when a user uploads a file. This workflow begins with creating the AWS (Amazon Web Services) components: an S3 Bucket for file storage and an AWS Lambda function (containing the Python logic). It also involves creating the Google Firebase components: a Firebase Project enabled with Authentication (for user login) and a Firestore database. Finally, these services are linked: the Lambda function is granted secure access to both the S3 bucket and the Firebase project, and the S3 bucket is configured to trigger the Lambda function on every file upload. The Frontend Application (hosted on Firebase Hosting) uploads the file directly to the AWS S3 Bucket. This action immediately triggers the AWS Lambda function. The Lambda function queries the PDF to determine its content type, invoking a "dual-path" extraction.
+* Digital Text Pathway (A): The function uses a library (e.g., PyPDF2) to extract all machine-readable text.
+* Image Text Pathway (B): The function sends the file to the AWS Textract (OCR) Service to extract all text from images.
+Both pathways converge at the "Combine Text Streams" step, where all extracted text is concatenated into a single, clean script. This script is then passed to the "Generative AI (NLP) Service" (e.g., Google Gemini) with a specific prompt. The AI service returns a "JSON Formatted Question Array," which the Lambda function then writes to the "Firebase Firestore Database," linked to the specific user's ID. The user's frontend, which is listening for changes, receives the new data and displays the quiz.
+3.2.2 Multimodal PDF Ingestion Pipeline
+The algorithm's core logic is divided into two parallel extraction pathways:
+* Digital Text Pathway: This pathway serves as the default mode for all machine-readable content. The Lambda function will use a Python library (e.g., PyPDF2 or pdfplumber) to iterate through the PDF and extract all digital text strings. This method is fast and highly accurate for digitally-native documents.
+* Image-Based (OCR) Pathway: When a PDF contains scanned images (or is entirely image-based), this second pathway is invoked. The researchers will employ the AWS Textract service. The Lambda function will call the Textract API (e.g., start_document_text_detection) to process the document. This service performs deep-learning-based OCR to extract text from images, returning a structured response that the function will parse.
+These two text streams are then concatenated into a single, comprehensive text script. If a document is digital-only, the OCR pathway will return empty, and if it is scan-only, the digital pathway will return empty. This "dual-path" design ensures all content is captured.
+3.2.3 AI-Driven Content Generation
+A critical component of this methodology is the Generative AI (NLP) prompting stage. Unlike search-based systems, this platform generates new content. The combined text script (from 3.2.2) will be used as the context for a request to a large-scale generative model (e.g., Google's Gemini API).
+This process will be achieved via a structured API call. The Lambda function will send the text script along with a carefully engineered meta-prompt, such as: "You are an expert educator. Based only on the following text, generate 10 multiple-choice questions. You must return your answer in a valid JSON array format, as follows: [{\"question\": \"...\", \"options\": [\"...\", \"...\"], \"answer\": 0}]". This step transforms the unstructured text into the final, structured JSON output.
+
+
+3.2.4 Tools, Libraries, and Environment
+The system and experimental pipeline will be implemented primarily in Python (v3.10 or higher) within the AWS Lambda environment. The core cloud services will be AWS (S3, Lambda, Textract) and Google Firebase (Authentication, Firestore, Hosting).
+* Key Libraries:
+   * Boto3 (AWS SDK for Python): To interface with S3 and Textract from the Lambda function.
+   * firebase-admin (Firebase Admin SDK): To securely write data to Firestore from the Lambda backend.
+   * google-generativeai (Google AI SDK): To interface with the Generative AI (Gemini) API.
+   * PyPDF2 or pdfplumber: For the digital text extraction pathway.
+* Frontend: The frontend prototype will be a simple web application built with HTML, CSS, and JavaScript, using the client-side Firebase SDK for authentication and real-time database listeners.
+3.3 Dataset Construction and Preparation
+A hybrid dataset of PDF documents will be aggregated to ensure the model can be evaluated for both controlled accuracy and real-world generalizability.
+* Dataset Sources:
+   * Controlled Dataset: The first component will be a set of researcher-created documents. This will include "pure" test cases: (1) a 5-page, text-only PDF, (2) a 5-page, image-only (scanned) PDF, and (3) a 5-page PDF with a mix of text and images.
+   * Real-World Dataset: The second component will consist of real-world documents compiled from public domain sources, such as open-source textbooks (e.g., from OpenStax), public-domain lecture notes, and historical scanned documents.
+* Data Preprocessing (Golden Set Creation): To evaluate the quality of the AI's output, a "Golden Set" of questions will be manually created. For each document in the Test Set (see 3.5.2), a human researcher will manually read the document and write 10-15 high-quality, relevant quiz questions. This "Golden Set" will serve as the ground truth against which the AI-generated questions will be compared.
+3.4 Prototype Development
+A prototype web application will be developed using an Agile methodology to allow for iterative refinement.
+* Backend: A serverless backend will be implemented using AWS Lambda (Python). This single function will host the entire AI pipeline (extraction, OCR, generation) and all the conditional logic. It will be triggered by S3 and will write its final output to Firestore.
+* Frontend: A static HTML/CSS/JS web application will provide the user interface. It will be hosted on Firebase Hosting. This client will handle user login via the Firebase SDK, manage the S3 upload process, and use a Firebase real-time listener to automatically display the quiz as soon as the backend function writes it to the database.
+3.5 Evaluation Procedure
+To conduct a quantitative comparison and benchmarking, the platform's performance will be assessed using a comprehensive set of metrics.
+3.5.1 Evaluation Metrics
+* Content Generation Quality Metrics (vs. Golden Set):
+   * Automated Metrics (BLEU, ROUGE): These metrics, borrowed from machine translation, will be used to measure the n-gram (word/phrase) overlap between the AI-generated questions and the human-written "Golden Set" questions.
+   * Human-in-the-Loop (HITL) Metrics: A human evaluator will score a sample of AI-generated questions (e.g., 50 questions) on a 1-5 scale for:
+      1. Fluency: Is the question grammatically correct and easy to understand?
+      2. Relevance: Is the question relevant to the source text?
+      3. Answerability: Is the correct answer provided, and is it factually supported by the source text?
+* Computational Efficiency Metrics:
+   * End-to-End Latency: This will measure the average time from the user's file upload to the quiz JSON appearing in the database.
+3.5.2 Validation and Benchmarking
+* Dataset Split: The aggregated hybrid dataset will be partitioned into:
+   * Development Set: Documents used for iterative development and prompt engineering.
+   * Test Set (10-15 documents): A held-out set used exclusively for the final performance evaluation and benchmarking.
+* Ablation Study and Baseline Comparison: To validate the platform's novelty and quantify the contribution of the multimodal (OCR) component, a comparative analysis will be conducted. The performance of the full, multimodal algorithm (Digital + OCR) will be benchmarked against a unimodal, text-only baseline (Digital-Only).
+   * Experiment: Both pipelines will be run on the "Real-World" and "Scanned-Only" documents from the Test Set.
+   * Measured Effect: The researchers will measure the performance drop (e.g., number of questions generated, relevance scores) when using the unimodal pipeline. This comparison will serve as an ablation study to isolate and quantify the value added by the AWS Textract (OCR) integration.
+3.6 Ethical Considerations
+The research will adhere to strict ethical guidelines concerning data use, privacy, and potential algorithmic bias.
+* Data, Privacy, and Copyright: All documents used for the test dataset will be either researcher-created or verified to be in the public domain to avoid copyright infringement. The platform architecture will be designed with security rules in Firebase and AWS to ensure one user cannot access another user's private, uploaded documents.
+* Algorithmic Bias: The researchers will be aware of potential biases inherited from the pre-trained Generative AI. This may include "hallucinating" facts not present in the text or generating questions that reflect biases in the AI's original training data. The HITL evaluation (3.5.1) is specifically designed to spot and report on such issues.
+* Reproducibility: All methodologies, including the specific cloud services used, Python library versions, and the final "meta-prompts" for the AI, will be documented with sufficient detail to ensure the study is reproducible.
+
+
+3.7 Limitations of the Methodology
+This methodology will have several defined limitations.
+* Dependency on Third-Party APIs: The platform's performance, cost, and latency are fundamentally dependent on the "black-box" APIs of AWS (Textract) and Google (Gemini). Any changes to these services, their pricing, or their performance are outside the researchers' control.
+* Dataset Scope: The test dataset, while varied, cannot capture the full, infinite complexity of all possible PDF layouts, scanned document qualities, or subject matters.
+* Cost and Scalability: While serverless is highly scalable, the cost of processing large documents (e.g., a 200-page textbook) is non-trivial. The methodology involves multiple paid API calls (Textract, Gemini) per document. This study will measure latency but will not conduct a formal cost-benefit analysis, which would be a critical step before a commercial release.
+* No "Golden" Distractors: The evaluation (3.5.1) compares the AI's questions to the "Golden Set," but it is difficult to objectively score the quality of the AI-generated wrong answers (distractors). This will be noted as a limitation of the evaluation.

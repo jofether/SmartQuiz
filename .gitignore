@@ -1,0 +1,25 @@
+# IDE and environment files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python virtual environment
+venv/
+env/
+.env
+
+# Build and distribution artifacts
+dist/
+build/
+*.pyc
+__pycache__/
+
+# OS-specific files
+.DS_Store
+Thumbs.db

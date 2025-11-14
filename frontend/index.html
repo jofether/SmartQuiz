@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQuiz - AI-Powered Quiz Generator</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="hero">
+        <div>
+            <p class="eyebrow">CloudComp Capstone • SmartQuiz</p>
+            <h1>AI-Powered Quiz Generator</h1>
+            <p class="lead">Upload PDFs, watch the pipeline run, and deliver quizzes in seconds.</p>
+        </div>
+        <div class="hero-actions">
+            <button id="login-btn" class="primary">Sign in with Google</button>
+            <button id="logout-btn" class="ghost" style="display:none;">Logout</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="auth-hint" class="card">
+            <h2>Authentication</h2>
+            <p>Only authenticated teammates can trigger uploads. Sign in with your project Google account.</p>
+        </section>
+
+        <section id="app-container" class="dashboard" style="display:none;">
+            <div class="dashboard-grid">
+                <article class="card" id="upload-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Step 1</p>
+                            <h3>Upload PDF</h3>
+                        </div>
+                        <span class="status-badge idle">Idle</span>
+                    </div>
+                    <p>Accepted formats: digital PDFs or scans. Max size 10 MB.</p>
+                    <label class="file-input">
+                        <input type="file" id="pdf-upload" accept=".pdf">
+                        <span>Select PDF</span>
+                    </label>
+                    <button id="upload-btn" class="primary block">Send to S3</button>
+                    <small class="helper-text">Triggers <strong>aws:s3:ObjectCreated</strong> → Lambda.</small>
+                </article>
+
+                <article class="card" id="pipeline-status">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Step 2</p>
+                            <h3>Processing Pipeline</h3>
+                        </div>
+                        <span class="status-badge warning">Waiting</span>
+                    </div>
+                    <ol class="pipeline-list">
+                        <li>Download from S3</li>
+                        <li>Dual-path text extraction (PyPDF2 + Textract)</li>
+                        <li>Send prompt to GenAI</li>
+                        <li>Persist quiz in Firestore</li>
+                    </ol>
+                    <div class="log-window" id="pipeline-log"></div>
+                </article>
+
+                <article class="card" id="quiz-list-section">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Step 3</p>
+                            <h3>Quiz Library</h3>
+                        </div>
+                        <span class="status-badge success">Live</span>
+                    </div>
+                    <p>Click a quiz to preview it. Data updates in realtime via Firestore listeners.</p>
+                    <div id="quiz-list" class="quiz-list"></div>
+                </article>
+
+                <article class="card" id="quiz-view-section" style="display:none;">
+                    <div class="card-header">
+                        <div>
+                            <p class="eyebrow">Preview</p>
+                            <h3 id="quiz-title">Quiz Title</h3>
+                        </div>
+                        <button id="back-to-quizzes-btn" class="ghost">Back</button>
+                    </div>
+                    <div id="quiz-content"></div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 SmartQuiz</p>
+    </footer>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script>
+        window.SMARTQUIZ_API_BASE_URL = 'http://localhost:8000/api';
+    </script>
+    <script src="js/app.js"></script>
+</body>
+</html>

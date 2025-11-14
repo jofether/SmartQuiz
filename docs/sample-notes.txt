@@ -1,0 +1,11 @@
+SmartQuiz Sample Notes
+======================
+
+This document demonstrates how the local runner (`backend/main.py`) converts raw
+text into a quiz without relying on AWS resources. Feel free to edit the content
+and re-run the script to see different quiz outputs.
+
+Key Ideas:
+1. Cloud storage services like Amazon S3 store unstructured files (objects).
+2. Firebase Firestore is a document database optimized for realtime updates.
+3. Generative AI models can transform long-form text into structured Q&A pairs.

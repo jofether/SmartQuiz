@@ -1,0 +1,25 @@
+{
+  "title": "sample-notes",
+  "questions": [
+    {
+      "question": "Which AWS service stores objects?",
+      "options": [
+        "Lambda",
+        "EC2",
+        "S3",
+        "DynamoDB"
+      ],
+      "answer": "S3"
+    },
+    {
+      "question": "Which Firebase product stores realtime quiz data?",
+      "options": [
+        "Firestore",
+        "Cloud Storage",
+        "Hosting",
+        "Remote Config"
+      ],
+      "answer": "Firestore"
+    }
+  ]
+}
