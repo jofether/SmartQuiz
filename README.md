@@ -47,6 +47,7 @@ For a more detailed diagram and sequence, see `docs/architecture.md`.
 ### 1. Frontend preview
 
 - Update `frontend/js/firebase-config.js` with your Firebase project settings.
+- Add your S3 upload values via the `<meta name="smartquiz:*">` tags in `frontend/dashboard.html` (see `docs/upload-config.md`).
 - Use the Live Server extension or any static server:
 
 ```powershell
@@ -107,6 +108,11 @@ firebase deploy --only firestore:indexes
 ```
 
 - Wait for the index to finish building in the Firebase console before reloading the dashboard. Without this deployment, the listener logs `Failed to stream quizzes` with a “query requires an index” error.
+
+### 5. Configure direct S3 uploads
+
+- `scripts/upload.js` now loads AWS details from `window.SMARTQUIZ_UPLOAD_CONFIG` or the `<meta name="smartquiz:*">` tags on `dashboard.html`.
+- Follow `docs/upload-config.md` to wire your region, S3 bucket, and Cognito Identity Pool before testing uploads.
 
 ## Data Flow Summary
 

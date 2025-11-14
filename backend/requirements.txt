@@ -1,8 +1,7 @@
-# Dependencies required by the Lambda deployment package.
-# Package them with the function code or publish via a Lambda layer.
+# Dependencies bundled with the SmartQuiz Lambda deployment package.
 
-boto3>=1.33.0
-PyPDF2>=3.0.0
-firebase-admin>=6.0.0
-google-cloud-firestore>=2.13.0
-google-generativeai>=0.4.0
+boto3>=1.35.0
+PyPDF2>=3.0.1
+firebase-admin>=6.5.0
+google-cloud-firestore>=2.16.2
+google-generativeai>=0.5.2
