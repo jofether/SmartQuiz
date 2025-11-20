@@ -30,6 +30,13 @@ function setStatus(message, variant = 'info') {
   statusEl.className = `status-pill status-${variant}`;
 }
 
+function formatQuizTitle(rawTitle) {
+  if (!rawTitle) return 'Untitled Quiz';
+  const trimmed = rawTitle.trim();
+  const stripped = trimmed.replace(/^\d+-/, '');
+  return stripped || trimmed || 'Untitled Quiz';
+}
+
 function renderQuizList(docs) {
   if (!quizContainer) return;
   quizContainer.innerHTML = '';
@@ -44,7 +51,7 @@ function renderQuizList(docs) {
 
   docs.forEach((docSnap) => {
     const quiz = docSnap.data();
-    const title = quiz.title || 'Untitled Quiz';
+    const title = formatQuizTitle(quiz.title);
     const questionCount = (quiz.questions || []).length;
 
     const item = document.createElement('article');

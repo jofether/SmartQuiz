@@ -50,7 +50,15 @@ if (!awsSdkLoaded) {
 
 const fileInput = document.getElementById('pdf-upload');
 const uploadBtn = document.getElementById('s3-upload-btn');
-const statusEl = document.getElementById('upload-status');
+const uploadStatusEl = document.getElementById('upload-status');
+const fileNameEl = document.getElementById('file-name');
+const fileSizeEl = document.getElementById('file-size');
+const fileSelectionChip = document.getElementById('file-selection');
+const fileRemoveBtn = document.getElementById('file-remove-btn');
+const fileInputWrapper = document.querySelector('.file-input');
+const uploadConfirmationEl = document.getElementById('upload-confirmation');
+
+let confirmationTimeoutId = null;
 
 if (!fileInput || !uploadBtn) {
   console.warn('Upload UI elements not found on this page.');
@@ -63,9 +71,10 @@ let currentUser = null;
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
   if (user) {
-    setStatus(`Signed in as ${user.email || user.uid}. Ready to upload.`);
+    setStatus('');
   } else {
     setStatus('Please stay signed in to upload files.');
+    clearFileSelection('', true);
   }
 });
 
@@ -74,16 +83,102 @@ if (configWarnings.length) {
   setStatus(`Upload disabled: ${configWarnings.join(' ')}. See docs/upload-config.md.`, true);
 }
 
-function setStatus(message, isError = false) {
-  if (!statusEl) return;
-  statusEl.textContent = message;
-  statusEl.style.color = isError ? 'var(--error, #b3261e)' : 'var(--muted, #5c6b81)';
+function setStatus(message = '', isError = false) {
+  if (!uploadStatusEl) return;
+  uploadStatusEl.textContent = message;
+  uploadStatusEl.style.color = isError ? 'var(--error, #b3261e)' : 'var(--muted, #5c6b81)';
+  uploadStatusEl.classList.toggle('is-hidden', !message);
+}
+
+function setConfirmation(message = '', { tone = 'success', autoHideMs = 0 } = {}) {
+  if (!uploadConfirmationEl) return;
+  clearTimeout(confirmationTimeoutId);
+
+  if (!message) {
+    uploadConfirmationEl.textContent = '';
+    uploadConfirmationEl.classList.remove('is-visible');
+    uploadConfirmationEl.removeAttribute('data-variant');
+    confirmationTimeoutId = null;
+    return;
+  }
+
+  const toneColors = {
+    success: '#0b6848',
+    error: 'var(--error, #b3261e)',
+    info: 'var(--clr-muted, #5c6b81)',
+    progress: 'var(--clr-primary, #5a54ff)'
+  };
+
+  uploadConfirmationEl.textContent = message;
+  uploadConfirmationEl.style.color = toneColors[tone] || toneColors.success;
+  uploadConfirmationEl.dataset.variant = tone;
+  uploadConfirmationEl.classList.add('is-visible');
+
+  if (autoHideMs > 0) {
+    confirmationTimeoutId = setTimeout(() => {
+      confirmationTimeoutId = null;
+      showConfirmationState(fileInput?.files?.length ? 'selected' : 'empty');
+    }, autoHideMs);
+  } else {
+    confirmationTimeoutId = null;
+  }
+}
+
+const confirmationStates = {
+  empty: { message: 'File Selection Empty', tone: 'info' },
+  selected: { message: 'PDF Selected', tone: 'success' },
+  uploading: { message: 'Quiz Being Generated', tone: 'progress' }
+};
+
+function showConfirmationState(state = 'empty') {
+  const config = confirmationStates[state] || confirmationStates.empty;
+  setConfirmation(config.message, { tone: config.tone });
+}
+
+function setUploadingState(isUploading) {
+  if (!uploadBtn) return;
+  uploadBtn.classList.toggle('is-uploading', isUploading);
+  uploadBtn.setAttribute('aria-busy', String(isUploading));
+  if (!configWarnings.length) {
+    uploadBtn.disabled = isUploading;
+  }
+}
+
+function setFileStatus(details = null) {
+  if (details) {
+    if (fileNameEl) fileNameEl.textContent = details.name;
+    if (fileSizeEl) fileSizeEl.textContent = details.size ? `(${details.size})` : '';
+    fileInputWrapper?.classList.add('has-selection');
+    fileSelectionChip?.setAttribute('aria-hidden', 'false');
+    showConfirmationState('selected');
+  } else {
+    if (fileNameEl) fileNameEl.textContent = '';
+    if (fileSizeEl) fileSizeEl.textContent = '';
+    fileInputWrapper?.classList.remove('has-selection');
+    fileSelectionChip?.setAttribute('aria-hidden', 'true');
+    showConfirmationState('empty');
+  }
+}
+
+function clearFileSelection(message = '', preserveStatus = false) {
+  if (fileInput) {
+    fileInput.value = '';
+  }
+  setFileStatus();
+  if (message) {
+    setStatus(message);
+  } else if (!preserveStatus) {
+    setStatus('');
+  }
 }
 
 function describeFile(file) {
-  if (!file) return 'Awaiting file selection…';
+  if (!file) return null;
   const sizeMb = file.size ? (file.size / 1024 / 1024).toFixed(2) : null;
-  return sizeMb ? `Ready: ${file.name} (${sizeMb} MB)` : `Ready: ${file.name}`;
+  return {
+    name: file.name,
+    size: sizeMb ? `${sizeMb} MB` : ''
+  };
 }
 
 function withAwsCredentials() {
@@ -123,7 +218,7 @@ async function uploadToS3(file) {
   upload.on('httpUploadProgress', (evt) => {
     if (!evt.total) return;
     const pct = Math.round((evt.loaded / evt.total) * 100);
-    setStatus(`Uploading… ${pct}%`);
+    console.debug('Upload progress', pct);
   });
 
   const result = await upload.promise();
@@ -135,29 +230,32 @@ async function handleUploadClick() {
     alert(configWarnings.join('\n'));
     return;
   }
-  try {
-    if (!fileInput?.files?.length) {
-      alert('Select a PDF before uploading.');
-      return;
-    }
-    const file = fileInput.files[0];
-    if (file.type !== 'application/pdf') {
-      const shouldContinue = confirm('The selected file is not flagged as PDF. Continue?');
-      if (!shouldContinue) return;
-    }
+  if (!fileInput?.files?.length) {
+    alert('Select a PDF before uploading.');
+    setStatus('Select a PDF before uploading.', true);
+    return;
+  }
 
-    uploadBtn.disabled = true;
-    setStatus('Requesting AWS credentials…');
+  const file = fileInput.files[0];
+  if (file.type !== 'application/pdf') {
+    const shouldContinue = confirm('The selected file is not flagged as PDF. Continue?');
+    if (!shouldContinue) return;
+  }
+
+  try {
+    setUploadingState(true);
+    showConfirmationState('uploading');
 
     const objectKey = await uploadToS3(file);
-    setStatus(`Upload complete! Stored at s3://${S3_UPLOAD_BUCKET}/${objectKey}`);
-    fileInput.value = '';
+    console.info('Uploaded to', `s3://${S3_UPLOAD_BUCKET}/${objectKey}`);
+    clearFileSelection('', true);
   } catch (err) {
     console.error(err);
     setStatus(err.message || 'Upload failed. Check console for details.', true);
+    showConfirmationState(fileInput?.files?.length ? 'selected' : 'empty');
     alert('Upload failed. See console for details.');
   } finally {
-    uploadBtn.disabled = false;
+    setUploadingState(false);
   }
 }
 
@@ -167,5 +265,19 @@ if (uploadBtn) {
 
 fileInput?.addEventListener('change', () => {
   const file = fileInput.files?.[0];
-  setStatus(describeFile(file));
+  const details = describeFile(file);
+  if (details) {
+    setFileStatus(details);
+    setStatus('');
+  } else {
+    clearFileSelection('', true);
+  }
 });
+
+fileRemoveBtn?.addEventListener('click', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  clearFileSelection('File selection cleared.');
+});
+
+showConfirmationState(fileInput?.files?.length ? 'selected' : 'empty');

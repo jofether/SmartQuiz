@@ -8,40 +8,42 @@
   <link rel="stylesheet" href="css/style.css">
   <meta name="robots" content="noindex">
 </head>
-<body>
-  <header class="hero">
-    <div>
-      <p class="eyebrow">SmartQuiz — Quiz Player</p>
-      <h1 id="quiz-title">Loading…</h1>
-      <p id="quiz-meta"></p>
-    </div>
-    <div class="hero-actions">
-      <a href="dashboard.html" class="ghost">Back to Dashboard</a>
-    </div>
-  </header>
-
-  <main>
-    <section class="card" id="quiz-container">
-      <div class="progress-container" aria-hidden="true">
-        <div
-          id="progress-fill"
-          class="progress-fill"
-          style="width:0%"
-          role="progressbar"
-          aria-valuenow="0"
-          aria-valuemin="0"
-          aria-valuemax="100"
-        ></div>
+<body class="dashboard-layout">
+  <div class="page-shell">
+    <header class="hero hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">SmartQuiz — Quiz Player</p>
+        <h1 id="quiz-title">Loading…</h1>
+        <p id="quiz-meta"></p>
       </div>
-      <div id="quiz-content-area" class="quiz-content-area">
-        <p>Loading quiz…</p>
+      <div class="hero-actions">
+        <a href="dashboard.html" class="ghost pill button-link">Back to Dashboard</a>
       </div>
-    </section>
-  </main>
+    </header>
 
-  <footer>
-    <p>&copy; 2025 SmartQuiz</p>
-  </footer>
+    <main class="dashboard-main">
+      <section class="card" id="quiz-container">
+        <div class="progress-container" aria-hidden="true">
+          <div
+            id="progress-fill"
+            class="progress-fill"
+            style="width:0%"
+            role="progressbar"
+            aria-valuenow="0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          ></div>
+        </div>
+        <div id="quiz-content-area" class="quiz-content-area">
+          <p>Loading quiz…</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>&copy; 2025 SmartQuiz</p>
+    </footer>
+  </div>
 
   <script>
     window.SMARTQUIZ_BUILD_VERSION = window.SMARTQUIZ_BUILD_VERSION || '2025-11-14-a';

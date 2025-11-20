@@ -29,6 +29,13 @@ function updateProgress(currentIndex, total) {
   fill.setAttribute('aria-valuenow', String(pct));
 }
 
+function formatQuizTitle(rawTitle) {
+  if (!rawTitle) return 'Quiz';
+  const trimmed = rawTitle.trim();
+  const withoutPrefix = trimmed.replace(/^\d+-/, '');
+  return withoutPrefix || trimmed || 'Quiz';
+}
+
 function renderQuestion() {
   const container = $('quiz-content-area');
   if (!container) return;
@@ -175,7 +182,7 @@ async function loadQuiz(quizId) {
   state.index = 0;
   state.correct = 0;
 
-  $('quiz-title').textContent = quiz.title || 'Quiz';
+  $('quiz-title').textContent = formatQuizTitle(quiz.title);
   const meta = $('quiz-meta');
   if (meta && typeof quiz.created_at?.toDate === 'function') {
     meta.textContent = `Generated ${quiz.created_at.toDate().toLocaleString()}`;

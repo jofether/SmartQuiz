@@ -111,7 +111,7 @@ export function protectPage() {
     const welcome = $('user-welcome');
     const signoutBtn = $('signout-btn');
     if (welcome) {
-      welcome.textContent = `Signed in as ${user.displayName || user.email}`;
+      welcome.textContent = user.displayName || user.email;
     }
     if (signoutBtn) {
       signoutBtn.style.display = 'inline-flex';

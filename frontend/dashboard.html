@@ -13,46 +13,80 @@
     <meta name="robots" content="noindex">
 </head>
 <body class="dashboard-layout">
-    <header class="hero">
-        <div>
-            <p class="eyebrow">SmartQuiz — Dashboard</p>
-            <h1>Dashboard</h1>
-            <p id="user-welcome">Checking authentication…</p>
-        </div>
-        <div class="hero-actions">
-            <button id="signout-btn" class="ghost" style="display:none;">Log Out</button>
-        </div>
-    </header>
+    <div class="page-shell">
+        <header class="hero hero-panel">
+            <div class="hero-copy">
+                <p class="eyebrow">SmartQuiz — Dashboard</p>
+                <h1>Your quizzes at a glance</h1>
+                <p id="user-welcome">Checking authentication…</p>
+            </div>
+            <div class="hero-actions">
+                <button id="signout-btn" class="ghost pill" style="display:none;">Log Out</button>
+            </div>
+        </header>
 
-    <main>
-        <section class="card" id="upload-card">
-            <h2>Upload PDF to SmartQuiz</h2>
-            <p>Choose a PDF syllabus, reviewer, or scanned notes. Files upload directly to your S3 bucket.</p>
-            <label class="file-input">
-                <input type="file" id="pdf-upload" accept="application/pdf,.pdf">
-                <span>Select PDF</span>
-            </label>
-            <button id="s3-upload-btn" class="primary block">Upload to S3</button>
-            <p id="upload-status" class="helper-text">Awaiting file selection…</p>
-        </section>
-
-        <section class="card" id="quiz-card">
-            <div class="card-header">
-                <div>
-                    <h2>Your Quizzes</h2>
-                    <p class="helper-text">Generated quizzes appear below instantly whenever the backend writes to Firestore.</p>
+        <main class="dashboard-main">
+            <section class="card upload-card" id="upload-card">
+                <div class="card-heading">
+                    <div>
+                        <p class="eyebrow">Upload</p>
+                        <h2>Upload PDF to SmartQuiz</h2>
+                        <p>Attach a PDF syllabus, reviewer, or scanned notes. Then click the Upload to S3 button to generate quiz.</p>
+                    </div>
                 </div>
-                <span id="quiz-status" class="status-pill">Listening…</span>
-            </div>
-            <div id="quiz-list" class="quiz-list">
-                <p>Waiting for quiz data…</p>
-            </div>
-        </section>
-    </main>
+                <div class="upload-controls">
+                    <label class="file-input" aria-label="Select PDF to upload">
+                        <input type="file" id="pdf-upload" accept="application/pdf,.pdf">
+                        <div class="file-input-content">
+                            <div class="file-icon" aria-hidden="true"></div>
+                            <div class="file-input-copy">
+                                <div class="file-default-copy">
+                                    <strong>Select PDF</strong>
+                                    <p class="file-input-hint">Drag a PDF here or click to browse.</p>
+                                </div>
+                                <div id="file-selection" class="file-selection" aria-live="polite">
+                                    <button type="button" id="file-remove-btn" class="file-selection-remove" aria-label="Remove selected file">
+                                        <span aria-hidden="true">×</span>
+                                    </button>
+                                    <span class="file-selection-icon" aria-hidden="true"></span>
+                                    <div class="file-selection-text">
+                                        <span id="file-name" class="file-name"></span>
+                                        <span id="file-size" class="file-size"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                    <div class="upload-actions">
+                        <button id="s3-upload-btn" class="primary" aria-live="polite">
+                            <span class="btn-label">Upload to S3</span>
+                            <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                        <p id="upload-status" class="helper-text upload-status is-hidden" aria-live="polite"></p>
+                        <p id="upload-confirmation" class="upload-confirmation" aria-live="polite"></p>
+                    </div>
+                </div>
+            </section>
 
-    <footer>
-        <p>&copy; 2025 SmartQuiz</p>
-    </footer>
+            <section class="card quizzes-card" id="quiz-card">
+                <div class="card-heading">
+                    <div>
+                        <p class="eyebrow">Activity</p>
+                        <h2>Your Quizzes</h2>
+                        <p class="helper-text">Generated quizzes appear here.</p>
+                    </div>
+                    <span id="quiz-status" class="status-pill status-muted">Listening…</span>
+                </div>
+                <div id="quiz-list" class="quiz-list">
+                    <p>Waiting for quiz data…</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 SmartQuiz</p>
+        </footer>
+    </div>
 
     <script>
         window.SMARTQUIZ_BUILD_VERSION = window.SMARTQUIZ_BUILD_VERSION || '2025-11-14-a';
