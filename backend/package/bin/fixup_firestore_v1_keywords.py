@@ -1,4 +1,4 @@
-#!C:\Users\Jethers\AppData\Local\Programs\Python\Python313\python.exe
+#!/var/lang/bin/python
 # -*- coding: utf-8 -*-
 # Copyright 2025 Google LLC
 #
