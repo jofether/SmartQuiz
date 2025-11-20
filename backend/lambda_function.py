@@ -270,12 +270,14 @@ def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
     genai.configure(api_key=api_key)
     model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-001")
     model = genai.GenerativeModel(model_name)
+    target_questions = int(os.environ.get("QUIZ_QUESTION_COUNT", "30"))
 
     snippet = source_text[:16000]
     prompt = (
         "You are a helpful tutor that turns source text into quizzes.\n"
         "Return ONLY a JSON array (no prose).\n"
         "Each item must contain: question, choices (>=4), answer, explanation.\n"
+        f"Create exactly {target_questions} unique questions.\n"
         f"Quiz title: {quiz_title}\n"
         "Source (may be truncated):\n"
         f"{snippet}\n"
@@ -283,7 +285,8 @@ def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
 
     response = model.generate_content(prompt)
     text = _extract_text_from_response(response)
-    return _parse_ai_json(text)
+    questions = _parse_ai_json(text)
+    return _ensure_question_count(questions, target_questions, source_text)
 
 
 def _extract_text_from_response(response) -> str:
@@ -326,6 +329,26 @@ def _parse_ai_json(text: str) -> List[dict]:
         return _json.loads(match.group(1))
 
     raise ValueError("Gemini output was not a JSON array")
+
+
+def _ensure_question_count(questions: List[dict], target: int, source_text: str) -> List[dict]:
+    sanitized = [q for q in questions if isinstance(q, dict)]
+    if len(sanitized) >= target:
+        return sanitized[:target]
+
+    deficit = max(target - len(sanitized), 0)
+    if deficit:
+        LOGGER.warning(
+            "Gemini produced %d questions; padding with %d fallback items to reach %d",
+            len(sanitized),
+            deficit,
+            target,
+        )
+        filler = _fallback_quiz_from_text(source_text, max_questions=deficit)
+        sanitized.extend(filler)
+
+    # If fallback still cannot reach target, return whatever we have.
+    return sanitized[:target]
 
 
 # ---------------------------------------------------------------------------
