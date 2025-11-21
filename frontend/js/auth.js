@@ -37,14 +37,12 @@ async function handleGoogleSignIn() {
 function toggleHeroButtons(user) {
   const loginBtn = $('login-btn');
   const logoutBtn = $('logout-btn');
-  if (!loginBtn || !logoutBtn) return;
-
   if (user) {
-    loginBtn.style.display = 'none';
-    logoutBtn.style.display = 'inline-flex';
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-flex';
   } else {
-    loginBtn.style.display = 'inline-flex';
-    logoutBtn.style.display = 'none';
+    if (loginBtn) loginBtn.style.display = 'inline-flex';
+    if (logoutBtn) logoutBtn.style.display = 'none';
   }
 }
 
@@ -55,6 +53,7 @@ function setupIndexAuthUI() {
   const googleBtn = $('google-signin-btn');
   const heroLoginBtn = $('login-btn');
   const heroLogoutBtn = $('logout-btn');
+  const landingCtaBtn = $('landing-signin-btn');
 
   if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
@@ -92,6 +91,10 @@ function setupIndexAuthUI() {
 
   if (heroLoginBtn) {
     heroLoginBtn.addEventListener('click', handleGoogleSignIn);
+  }
+
+  if (landingCtaBtn) {
+    landingCtaBtn.addEventListener('click', handleGoogleSignIn);
   }
 
   if (heroLogoutBtn) {

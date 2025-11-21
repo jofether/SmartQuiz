@@ -12,19 +12,33 @@
         <div>
             <p class="eyebrow">CloudComp Capstone • SmartQuiz</p>
             <h1>AI-Powered Quiz Generator</h1>
-            <p class="lead">Upload PDFs, watch the pipeline run, and deliver quizzes in seconds.</p>
+            <p class="lead">Upload PDFs and deliver quizzes in seconds.</p>
         </div>
         <div class="hero-actions">
-            <button id="login-btn" class="primary">Sign in with Google</button>
             <button id="logout-btn" class="ghost" style="display:none;">Logout</button>
         </div>
     </header>
 
     <main>
-        <section id="auth-hint" class="card">
-            <h2>Authentication</h2>
-            <p>Only authenticated teammates can trigger uploads. Sign in with your project Google account to continue.</p>
-            <p class="helper-text">After signing in, you’ll be redirected to the SmartQuiz dashboard.</p>
+        <section class="value-prop-card-container">
+            <div class="value-prop-card">
+                <h2 class="card-headline">Generate Quizzes in Seconds</h2>
+                <ul class="card-features">
+                    <li>Transform PDF documents into quizzes</li>
+                    <li>Save hours of manual question creation</li>
+                </ul>
+                <button class="primary sign-in-button" id="landing-signin-btn">
+                    <span class="google-icon" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M19.6 10.2273C19.6 9.51818 19.5364 8.83636 19.4182 8.18182H10V12.0509H15.4182C15.1864 13.3 14.4682 14.3364 13.3545 15.0727V17.6636H16.6182C18.4909 15.9636 19.6 13.3636 19.6 10.2273Z" fill="#4285F4"/>
+                            <path d="M10 20C12.7 20 14.9545 19.1045 16.6182 17.6636L13.3545 15.0727C12.4545 15.6727 11.3455 16.0455 10 16.0455C7.40455 16.0455 5.21818 14.3273 4.43636 11.9636H1.05455V14.6273C2.70909 17.9909 6.09091 20 10 20Z" fill="#34A853"/>
+                            <path d="M4.43636 11.9636C4.23636 11.3636 4.12727 10.7182 4.12727 10.0455C4.12727 9.37273 4.23636 8.72727 4.43636 8.12727V5.46364H1.05455C0.381818 6.81818 0 8.37273 0 10.0455C0 11.7182 0.381818 13.2727 1.05455 14.6273L4.43636 11.9636Z" fill="#FBBC05"/>
+                            <path d="M10 3.95455C11.4727 3.95455 12.8 4.46364 13.8727 5.49091L16.6909 2.67273C14.9455 1.06364 12.7 0 10 0C6.09091 0 2.70909 2.00909 1.05455 5.46364L4.43636 8.12727C5.21818 5.76364 7.40455 3.95455 10 3.95455Z" fill="#EA4335"/>
+                        </svg>
+                    </span>
+                    Sign in with Google
+                </button>
+            </div>
         </section>
     </main>
 
