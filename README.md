@@ -1,65 +1,96 @@
-# SmartQuiz - AI-Powered Quiz Generator
+# SmartQuiz
 
-## Overview
+AI-assisted quiz generation platform that converts uploaded PDFs into interactive exams. SmartQuiz blends a Firebase-hosted frontend, AWS S3 + Lambda processing pipeline, and Google Gemini question generation to deliver quizzes in real time.
 
-SmartQuiz is a cloud-native application that turns user-uploaded PDFs into interactive quizzes. It combines Firebase (BaaS) and AWS (IaaS) with an AI question-generation service to deliver an end-to-end automated assessment platform.
+## Architecture Overview
 
-### Capabilities
+| Layer | Responsibility | Key Tech |
+| --- | --- | --- |
+| Frontend | Dashboard, auth, uploads, quiz player | Vanilla HTML/CSS/JS, Firebase Hosting, Firebase Auth, Firestore client |
+| Storage | Raw documents and quiz records | AWS S3 (PDF uploads), Firestore (`quizzes` collection) |
+| Compute | Ingest PDFs, extract text, call AI, persist quizzes | AWS Lambda (`backend/lambda_function.py`) |
+| AI Layer | Generate structured questions | Google Gemini (via `google-generativeai`) |
 
-- Accept digitally-native and scanned PDFs.
-- Extract text via dual-path processing (PyPDF2 + Textract OCR).
-- Generate structured quiz JSON with a GenAI endpoint.
-- Persist results to Firestore for realtime delivery to the frontend.
-
-### Architecture Snapshot
-
-- **Frontend**: Vanilla HTML/CSS/JS hosted on Firebase Hosting.
-- **Backend**: AWS Lambda (Python) triggered by S3 uploads.
-- **Storage**: AWS S3 for PDFs, Firestore for quizzes.
-- **AI Layer**: External GenAI endpoint (e.g., Google Gemini or Bedrock) invoked by Lambda.
-
-For a more detailed diagram and sequence, see `docs/architecture.md`.
+See `docs/architecture.md` for diagrams and sequence details.
 
 ## Repository Layout
 
 ```text
-.
+SmartQuiz/
 ├── backend/
-│   ├── lambda_function.py      # Serverless pipeline orchestrator
-│   ├── main.py                 # Local runner for the Lambda pipeline
-│   ├── dev_server.py           # Flask API that mimics AWS pipeline for the frontend
-│   └── requirements.txt        # Python dependencies bundled with Lambda
+│   ├── lambda_function.py      # Lambda entrypoint (S3 -> AI -> Firestore)
+│   ├── main.py                 # Local runner for AI pipeline
+│   ├── dev_server.py           # Lightweight Flask proxy for local frontend testing
+│   ├── requirements.txt        # Frozen Lambda dependencies
+│   └── layer/                  # Vendored site-packages for deployment layers
 ├── docs/
-│   └── architecture.md         # Detailed dataflow and backlog
+│   ├── architecture.md         # System design + backlog
+│   ├── upload-config.md        # Cognito/S3 configuration guide
+│   └── sample-quiz.json        # Reference quiz payload
 ├── frontend/
-│   ├── css/
-│   │   └── style.css           # Dashboard styling
-│   ├── js/
-│   │   ├── app.js              # UI state management & placeholders
-│   │   └── firebase-config.js  # Firebase credentials (replace placeholders)
-│   └── index.html              # Dashboard layout
-├── .gitignore
+│   ├── dashboard.html          # Authenticated dashboard + upload UI
+│   ├── quiz.html               # Quiz player experience
+│   ├── css/style.css           # Global styling for dashboard + quiz
+│   └── js/
+│       ├── auth.js             # Firebase Auth wiring + guard rails
+│       ├── dashboard.js        # Firestore listener + quiz list rendering
+│       ├── upload.js           # Direct-to-S3 upload logic
+│       ├── quiz-taker.js       # Sequential quiz flow on quiz.html
+│       └── firebase-config.js  # firebaseConfig stub (replace with real values)
+├── firestore.indexes.json      # Composite index required by dashboard query
+├── firebase.json               # Hosting configuration
+├── package.json                # Frontend tooling helpers
 └── README.md
 ```
 
-## Quick Start
+## Prerequisites
 
-### 1. Frontend preview
+- Firebase project with Authentication (Google) + Firestore enabled.
+- AWS account with:
+  - S3 bucket for uploads.
+  - Cognito Identity Pool granting `s3:PutObject` to the bucket.
+  - Lambda function wired to the S3 bucket via ObjectCreated event.
+- Google Gemini API key (`google-generativeai >= 0.8`).
+- Node.js 18+ (for local tooling) and Python 3.11+ (for Lambda code).
 
-- Update `frontend/js/firebase-config.js` with your Firebase project settings.
-- Add your S3 upload values via the `<meta name="smartquiz:*">` tags in `frontend/dashboard.html` (see `docs/upload-config.md`).
-- Use the Live Server extension or any static server:
+## Frontend Setup
 
-```powershell
-cd frontend
-npx serve .
-```
+1. Populate Firebase config:
 
-- Sign in, upload a PDF (mock flow), and observe the dashboard logging.
+	 ```javascript
+	 // frontend/js/firebase-config.js
+	 export const firebaseConfig = {
+		apiKey: '...'
+		// etc
+	 };
+	 ```
 
-### 2. Backend development
+2. Provide AWS upload metadata in `frontend/dashboard.html` (or via `window.SMARTQUIZ_UPLOAD_CONFIG`):
 
-- Install dependencies locally:
+	```html
+	<meta name="smartquiz:aws-region" content="ap-southeast-2">
+	<meta name="smartquiz:s3-bucket" content="smartquiz-project-bucket">
+	<meta name="smartquiz:cognito-identity-pool" content="region:uuid">
+	```
+
+3. Install Firebase CLI and log in:
+
+	```powershell
+	npm install -g firebase-tools
+	firebase login
+	```
+
+4. Serve locally (any static server works):
+
+	```powershell
+	cd frontend
+	npx serve .
+	# or: firebase emulators:start --only hosting
+	```
+
+5. Sign in on `dashboard.html`, pick a PDF, and the UI will push directly to S3 using Cognito credentials while listening to Firestore for quiz updates.
+
+## Backend Setup
 
 ```powershell
 cd backend
@@ -68,72 +99,81 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-- Configure environment variables before running the handler locally (see `.env.example` section in `docs/architecture.md`).
-- Package the Lambda (e.g., via AWS SAM or Zip) and deploy with IAM permissions for S3, Textract, and Firestore (via service account JSON secret).
-- To smoke-test the pipeline without AWS resources, run:
+Environment variables expected by `lambda_function.py` / `main.py`:
+
+| Variable | Description |
+| --- | --- |
+| `AWS_REGION` | Region for S3 + Lambda |
+| `GEMINI_API_KEY` | Google Generative AI key |
+| `GEMINI_MODEL` | (Optional) defaults to `gemini-2.0-flash-001` |
+| `QUIZ_QUESTION_COUNT` | (Optional) default 30 |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON string/base64 for Firestore access |
+
+### Local pipeline test
 
 ```powershell
-python backend/main.py --file docs/sample-notes.txt --title "Local Test"
+python main.py --file docs/sample-notes.txt --title "Local Test"
 ```
 
-Pass `--write-json quiz.json` to store the generated quiz payload.
+Use `--write-json quiz.json` to export the generated payload.
 
-### 3. Frontend + dev API loop
-
-1. Start the Flask dev server (provides `/api/quizzes` endpoints that proxy to the Lambda helpers):
+### Flask dev server (optional)
 
 ```powershell
-cd backend
 python dev_server.py
 ```
 
-The server listens on `http://localhost:8000` and keeps quizzes in memory.
+Pairs with a locally served frontend so you can iterate without deploying to AWS.
 
-1. In a separate terminal, serve the frontend (any static server works):
+## Direct S3 Upload Configuration
 
-```powershell
-cd frontend
-python -m http.server 5500
-```
+The dashboard uses `frontend/js/upload.js` to perform browser-based S3 uploads:
 
-1. Visit `http://localhost:5500`, click **Sign in with Google** (mock), upload a PDF/text file, and the UI will call the dev API, display pipeline logs, and render the generated quiz.
+1. Configure Cognito Identity Pool with unauthenticated role granting `s3:PutObject` to your bucket path (e.g., `uploads/${identityId}/*`).
+2. Add region/bucket/pool ID to the dashboard via meta tags or `window.SMARTQUIZ_UPLOAD_CONFIG`.
+3. (Optional) Override at runtime by injecting `window.SMARTQUIZ_UPLOAD_CONFIG` before loading `upload.js`.
 
-### 4. Firestore indexes (required for the dashboard)
+Detailed guidance lives in `docs/upload-config.md`.
 
-- The dashboard query combines `where('ownerId' == user.uid)` with `orderBy('created_at', 'desc')`, which requires a composite index.
-- The repo now ships with `firestore.indexes.json`; deploy it so Firestore can serve the listener without errors:
+## Firestore Index Deployment
+
+The dashboard queries `quizzes` with `where('ownerId', '==', uid)` + `orderBy('created_at', 'desc')`. Deploy the provided composite index before testing:
 
 ```powershell
 firebase deploy --only firestore:indexes
 ```
 
-- Wait for the index to finish building in the Firebase console before reloading the dashboard. Without this deployment, the listener logs `Failed to stream quizzes` with a “query requires an index” error.
+Wait for the index to finish building in the Firebase console before refreshing the dashboard.
 
-### 5. Configure direct S3 uploads
+## Deployment
 
-- `scripts/upload.js` now loads AWS details from `window.SMARTQUIZ_UPLOAD_CONFIG` or the `<meta name="smartquiz:*">` tags on `dashboard.html`.
-- Follow `docs/upload-config.md` to wire your region, S3 bucket, and Cognito Identity Pool before testing uploads.
+### Frontend (Firebase Hosting)
 
-## Data Flow Summary
+```powershell
+firebase deploy --only hosting
+```
 
-1. User uploads PDF → stored in S3 bucket (`smartquiz-input-*`).
-2. S3 event triggers Lambda → downloads file to `/tmp`.
-3. Lambda extracts text (digital + OCR) → sends aggregated text to GenAI endpoint.
-4. AI response (quiz JSON) persisted to Firestore under `quizzes/{quizId}`.
-5. Frontend listens to Firestore and renders new quiz instantly.
+Ensure `firebase.json` maps to the `frontend/` build output (currently static assets checked into repo).
 
-## Current Milestones
+### Backend (AWS Lambda)
 
-- [x] Frontend dashboard scaffolding with mock data.
-- [x] Backend Lambda skeleton with modular helpers.
-- [x] Documentation outlining architecture & setup.
-- [ ] Wire Firebase auth + Firestore listeners.
-- [ ] Integrate real S3 upload + signed URLs.
-- [ ] Call production GenAI endpoint and store results.
+1. Package dependencies (if not using the prebuilt `backend/layer` contents).
+2. Zip `lambda_function.py` plus any vendored libraries.
+3. Update the Lambda function code and confirm the S3 trigger is enabled.
+4. Set environment variables (Gemini key, Firestore service account, question count, etc.).
 
-## Next Steps
+## Useful Docs & Scripts
 
-1. Connect Firebase Auth/Firestore in the frontend (`app.js`).
-2. Implement secure upload (pre-signed URL or Firebase Storage proxy) and show pipeline status from Firestore documents.
-3. Replace placeholders in `lambda_function.py` with concrete Textract + GenAI logic; ensure Firestore writes succeed via service account credentials.
-4. Add automated tests (unit for Lambda, integration for Firestore listener) and CI checks.
+- `docs/architecture.md` – high-level design, backlog, and deployment notes.
+- `docs/upload-config.md` – Cognito + S3 wiring steps.
+- `docs/sample-quiz.json` – output contract reference.
+- `backend/dev_server.py` – mock API surface for rapid UI iteration.
+
+## Project Status & Next Steps
+
+- ✅ Redesigned dashboard + quiz player with real Firebase Auth + Firestore listeners.
+- ✅ Direct-to-S3 uploads with progress + confirmation states.
+- ✅ Lambda pipeline extracts text, calls Gemini, persists quizzes.
+- 🔜 Harden Lambda error handling, add integration tests, and automate deployments via CI/CD.
+
+Contributions via pull requests are welcome. Please include screenshots or console logs for UI-facing changes.
