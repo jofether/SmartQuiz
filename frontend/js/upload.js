@@ -228,7 +228,10 @@ async function uploadToS3(file) {
   await withAwsCredentials();
 
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-  const key = `uploads/${currentUser.uid}/${Date.now()}-${sanitizedName}`;
+  const prefix = currentUser.isAnonymous
+    ? ["uploads", "guests", currentUser.uid]
+    : ["uploads", "users", currentUser.uid];
+  const key = [...prefix, `${Date.now()}-${sanitizedName}`].join("/");
 
   const upload = new AWS.S3.ManagedUpload({
     params: {

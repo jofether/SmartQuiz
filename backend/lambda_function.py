@@ -13,6 +13,7 @@ import base64
 import json
 import logging
 import os
+from datetime import datetime, timedelta, timezone
 from google.oauth2 import service_account
 import tempfile
 import urllib.parse
@@ -187,45 +188,29 @@ def extract_digital_text(pdf_path: Path) -> str:
 
 
 def extract_ocr_text_vision(pdf_path):
-    """
-    Uses Google Cloud Vision (OCR) to extract text from PDF.
-    Requires 'FIREBASE_SERVICE_ACCOUNT' env var containing the JSON key.
-    """
+    """Uses Google Cloud Vision (OCR) to extract text from PDF."""
+
     from google.cloud import vision
 
     print(f"[INFO] Starting Google Cloud Vision OCR for {pdf_path}")
-    
+
     try:
-        # --- AUTHENTICATION FIX START ---
-        # 1. Get the JSON string from the environment variable
-        service_account_info = os.environ.get('FIREBASE_SERVICE_ACCOUNT')
+        service_account_info = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
         if not service_account_info:
             print("[ERROR] FIREBASE_SERVICE_ACCOUNT env var is missing.")
             return ""
-        
-        # 2. Parse the string into a dictionary
+
         if isinstance(service_account_info, str):
             creds_dict = json.loads(service_account_info)
         else:
             creds_dict = service_account_info
 
-        # 3. Create credentials object
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
-        
-        # 4. Pass credentials to the client
         vision_client = vision.ImageAnnotatorClient(credentials=credentials)
-        # --- AUTHENTICATION FIX END ---
 
         with open(pdf_path, "rb") as f:
             content = f.read()
 
-        # Construct the request (using PDF/TIFF requires async_batch_annotate_files usually, 
-        # but for simple image-based PDFs, we might need to render pages first. 
-        # HOWEVER, assuming your current logic works for the file type, we just fix the auth).
-        # Note: If you are sending a PDF file directly to 'image' param, it might fail 
-        # because Vision expects an image (JPG/PNG) for simple annotation. 
-        # But let's fix the Auth first.
-        
         image = vision.Image(content=content)
         response = vision_client.text_detection(image=image)
 
@@ -240,7 +225,6 @@ def extract_ocr_text_vision(pdf_path):
 
     except Exception as e:
         print(f"[ERROR] OCR Failed: {e}")
-        # Print detailed traceback to logs to see why
         import traceback
         traceback.print_exc()
         return ""
@@ -285,7 +269,11 @@ def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
 
     response = model.generate_content(prompt)
     text = _extract_text_from_response(response)
-    questions = _parse_ai_json(text)
+    try:
+        questions = _parse_ai_json(text)
+    except Exception as exc:
+        LOGGER.warning("Gemini produced invalid JSON; falling back to heuristics: %s", exc)
+        questions = _fallback_quiz_from_text(source_text, max_questions=target_questions)
     return _ensure_question_count(questions, target_questions, source_text)
 
 
@@ -395,6 +383,8 @@ def persist_quiz(quiz: dict, bucket: str, key: str) -> None:
 
     db = get_firestore_client()
     owner_id = _infer_owner_from_key(key)
+    guest_upload = _is_guest_upload_key(key)
+    owner_type = "guest" if guest_upload else ("registered" if owner_id else "unknown")
     doc = {
         "title": quiz.get("title") or Path(key).stem,
         "questions": quiz.get("questions", []),
@@ -402,16 +392,44 @@ def persist_quiz(quiz: dict, bucket: str, key: str) -> None:
         "pipeline": "lambda-dual-path",
         "created_at": firebase_firestore.SERVER_TIMESTAMP,
         "ownerId": owner_id,
+        "ownerType": owner_type,
     }
+
+    if guest_upload:
+        # TTL cleanup: guest quizzes expire after 24 hours
+        doc["expirationDate"] = datetime.now(timezone.utc) + timedelta(hours=24)
+
     db.collection("quizzes").add(doc)
     LOGGER.info("Quiz saved for %s", key)
 
 
 def _infer_owner_from_key(key: str) -> Optional[str]:
     parts = key.strip("/").split("/")
-    if len(parts) >= 2 and parts[0] == "uploads":
+    if not parts or parts[0] != "uploads":
+        return None
+
+    if len(parts) >= 3 and parts[1] in {"users", "guests"}:
+        return parts[2]
+
+    if len(parts) >= 2:
         return parts[1]
     return None
+
+
+def _is_guest_upload_key(key: str) -> bool:
+    parts = key.strip("/").split("/")
+    if not parts or parts[0] != "uploads":
+        return False
+
+    if len(parts) >= 2 and parts[1] == "guests":
+        return True
+
+    if len(parts) >= 3 and parts[1] == "users":
+        return False
+
+    if len(parts) >= 3:
+        return "guest" in parts[2:]
+    return False
 
 
 # ---------------------------------------------------------------------------

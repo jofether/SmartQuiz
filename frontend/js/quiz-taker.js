@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const quizId = getQueryParam('id');
     if (!quizId) {
-      $('quiz-content-area').innerHTML = '<p>Missing quiz id in the URL.</p>';
+      $('quiz-content-area').innerHTML = '<p>Missing quiz id in the URL. Launch quizzes via the dashboard to continue.</p>';
       return;
     }
 

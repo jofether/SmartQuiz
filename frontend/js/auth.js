@@ -12,6 +12,7 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  signInAnonymously,
   signOut,
   onAuthStateChanged
 } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js';
@@ -20,14 +21,38 @@ import {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+const GUEST_FLAG_KEY = 'smartquiz:guest-mode';
+const DASHBOARD_ROUTE = 'dashboard.html';
 
 // Utility: simple selector
 const $ = (id) => document.getElementById(id);
+
+function setGuestFlag(active) {
+  try {
+    if (active) {
+      localStorage.setItem(GUEST_FLAG_KEY, 'true');
+    } else {
+      localStorage.removeItem(GUEST_FLAG_KEY);
+    }
+  } catch (error) {
+    console.warn('Unable to update guest flag', error);
+  }
+}
+
+function wantsGuestMode() {
+  try {
+    return localStorage.getItem(GUEST_FLAG_KEY) === 'true';
+  } catch (error) {
+    console.warn('Unable to read guest flag', error);
+    return false;
+  }
+}
 
 async function handleGoogleSignIn() {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     console.log('Google sign-in:', result.user);
+    setGuestFlag(false);
   } catch (err) {
     console.error(err);
     alert(err.message || 'Google sign-in failed');
@@ -54,6 +79,7 @@ function setupIndexAuthUI() {
   const heroLoginBtn = $('login-btn');
   const heroLogoutBtn = $('logout-btn');
   const landingCtaBtn = $('landing-signin-btn');
+  const guestModeBtn = $('guest-mode-btn');
 
   if (signupForm) {
     signupForm.addEventListener('submit', async (e) => {
@@ -97,9 +123,29 @@ function setupIndexAuthUI() {
     landingCtaBtn.addEventListener('click', handleGoogleSignIn);
   }
 
+  if (guestModeBtn) {
+    guestModeBtn.addEventListener('click', async (event) => {
+      event.preventDefault();
+      guestModeBtn.disabled = true;
+      try {
+        setGuestFlag(true);
+        const cred = await signInAnonymously(auth);
+        console.log('Guest mode ready', cred.user?.uid);
+        window.location.replace(DASHBOARD_ROUTE);
+      } catch (err) {
+        console.error('Guest mode failed', err);
+        setGuestFlag(false);
+        alert('Guest mode is temporarily unavailable. Please try again or sign in with Google.');
+      } finally {
+        guestModeBtn.disabled = false;
+      }
+    });
+  }
+
   if (heroLogoutBtn) {
     heroLogoutBtn.addEventListener('click', async () => {
       await signOut(auth);
+      setGuestFlag(false);
     });
   }
 }
@@ -108,18 +154,34 @@ function setupIndexAuthUI() {
 export function protectPage() {
   onAuthStateChanged(auth, (user) => {
     if (!user) {
+      if (wantsGuestMode()) {
+        signInAnonymously(auth).catch((err) => {
+          console.error('Failed to resume guest session', err);
+          setGuestFlag(false);
+          window.location.replace('index.html');
+        });
+        return;
+      }
       window.location.replace('index.html');
       return;
+    }
+    if (!user.isAnonymous) {
+      setGuestFlag(false);
     }
     const welcome = $('user-welcome');
     const signoutBtn = $('signout-btn');
     if (welcome) {
-      welcome.textContent = user.displayName || user.email;
+      if (user.isAnonymous) {
+        welcome.textContent = 'Guest Mode';
+      } else {
+        welcome.textContent = user.displayName || user.email;
+      }
     }
     if (signoutBtn) {
       signoutBtn.style.display = 'inline-flex';
       signoutBtn.onclick = async () => {
         await signOut(auth);
+        setGuestFlag(false);
       };
     }
   });
@@ -131,7 +193,7 @@ function initRedirects() {
     const onIndex = /index\.html?$/.test(window.location.pathname) || /\/$/.test(window.location.pathname);
     toggleHeroButtons(user);
     if (user && onIndex) {
-      window.location.replace('dashboard.html');
+      window.location.replace(DASHBOARD_ROUTE);
     }
   });
 }

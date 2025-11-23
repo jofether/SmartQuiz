@@ -146,7 +146,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    setStatus("Live updates enabled", "success");
+    const statusCopy = user.isAnonymous
+      ? { message: "Guest mode active — quizzes are stored in Firestore for this session", variant: "info" }
+      : { message: "Live updates enabled", variant: "success" };
+
+    setStatus(statusCopy.message, statusCopy.variant);
 
     if (state.unsubscribe) {
       state.unsubscribe();

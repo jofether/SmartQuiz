@@ -153,7 +153,7 @@ const steps = [
   {
     icon: "flash-outline",
     title: "AI Generation",
-    desc: "Gemini AI scans your document, extracting key concepts to formulate accurate multiple-choice questions.",
+    desc: "AWS and Gemini AI scans your document, extracting key concepts to formulate accurate multiple-choice questions.",
   },
   {
     icon: "checkmark-circle-outline",
