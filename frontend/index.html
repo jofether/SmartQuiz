@@ -1,56 +1,277 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SmartQuiz - AI-Powered Quiz Generator</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-    <header class="hero">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav
+      class="fixed top-0 z-50 flex items-center justify-between w-full py-4 px-6 md:px-16 lg:px-24 xl:px-32 backdrop-blur text-white text-sm"
+    >
+      <a href="/" class="text-3xl font-semibold flex items-center gap-2">
+        <ion-icon name="sparkles" size="large"></ion-icon>
+        SmartQuiz</a
+      >
+
+      <!-- NavLinks -->
+      <div class="hidden lg:flex items-center gap-8 transition duration-500">
+        <a href="#" class="hover:text-purple-500 transition"> Home </a>
+        <a href="#features" class="hover:text-purple-500 transition">
+          Features
+        </a>
+        <a href="#how" class="hover:text-purple-500 transition">
+          How it Works
+        </a>
+        <a href="#testimonials" class="hover:text-purple-500 transition">
+          Testimonials
+        </a>
+        <a href="#faqs" class="hover:text-purple-500 transition"> FAQs </a>
+      </div>
+
+      <!-- CTA Button -->
+      <button
+        class="hidden lg:flex px-6 py-2.5 bg-purple-600 hover:bg-purple-700 active:scale-95 transition-all rounded-full items-center gap-2"
+      >
+        <ion-icon name="color-wand-outline" class="size-[16px]"></ion-icon>
+        Generate Quiz
+      </button>
+
+      <!-- Menu Button -->
+      <button
+        id="open-menu"
+        class="lg:hidden active:scale-90 transition grid place-items-center"
+      >
+        <ion-icon name="menu-outline" size="large"></ion-icon>
+      </button>
+    </nav>
+
+    <!-- Mobile Nav -->
+    <div
+      id="mobile-navlinks"
+      class="fixed inset-0 z-[100] bg-black/40 text-white backdrop-blur flex flex-col items-center justify-center text-lg gap-8 lg:hidden transition-transform duration-300 -translate-x-full"
+    >
+      <a href="#"> Home </a>
+      <a href="#features"> Features </a>
+      <a href="#how"> How it Works </a>
+      <a href="#testimonials"> Testimonials </a>
+      <a href="#faqs"> FAQs </a>
+      <button
+        id="close-menu"
+        class="active:ring-3 active:ring-white aspect-square size-10 p-1 items-center justify-center bg-purple-600 hover:bg-purple-700 transition text-white rounded-md flex"
+      >
+        <ion-icon name="close" size="large"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Hero Section -->
+    <div
+      class="relative flex flex-col items-center justify-center text-sm px-4 md:px-16 lg:px-24 xl:px-32 text-white"
+    >
+      <div
+        class="absolute top-28 -z-1 left-1/4 size-72 bg-purple-600 blur-[300px]"
+      ></div>
+      <div class="flex items-center mt-44">
+        <div id="avatar-stack" class="flex -space-x-2 pr-3"></div>
         <div>
-            <p class="eyebrow">CloudComp Capstone • SmartQuiz</p>
-            <h1>AI-Powered Quiz Generator</h1>
-            <p class="lead">Upload PDFs and deliver quizzes in seconds.</p>
-        </div>
-        <div class="hero-actions">
-            <button id="logout-btn" class="ghost" style="display:none;">Logout</button>
-        </div>
-    </header>
+          <ion-icon name="star" class="text-purple-600"></ion-icon>
+          <ion-icon name="star" class="text-purple-600"></ion-icon>
+          <ion-icon name="star" class="text-purple-600"></ion-icon>
+          <ion-icon name="star" class="text-purple-600"></ion-icon>
+          <ion-icon name="star" class="text-purple-600"></ion-icon>
 
-    <main>
-        <section class="value-prop-card-container">
-            <div class="value-prop-card">
-                <h2 class="card-headline">Generate Quizzes in Seconds</h2>
-                <ul class="card-features">
-                    <li>Transform PDF documents into quizzes</li>
-                    <li>Save hours of manual question creation</li>
-                </ul>
-                <button class="primary sign-in-button" id="landing-signin-btn">
-                    <span class="google-icon" aria-hidden="true">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M19.6 10.2273C19.6 9.51818 19.5364 8.83636 19.4182 8.18182H10V12.0509H15.4182C15.1864 13.3 14.4682 14.3364 13.3545 15.0727V17.6636H16.6182C18.4909 15.9636 19.6 13.3636 19.6 10.2273Z" fill="#4285F4"/>
-                            <path d="M10 20C12.7 20 14.9545 19.1045 16.6182 17.6636L13.3545 15.0727C12.4545 15.6727 11.3455 16.0455 10 16.0455C7.40455 16.0455 5.21818 14.3273 4.43636 11.9636H1.05455V14.6273C2.70909 17.9909 6.09091 20 10 20Z" fill="#34A853"/>
-                            <path d="M4.43636 11.9636C4.23636 11.3636 4.12727 10.7182 4.12727 10.0455C4.12727 9.37273 4.23636 8.72727 4.43636 8.12727V5.46364H1.05455C0.381818 6.81818 0 8.37273 0 10.0455C0 11.7182 0.381818 13.2727 1.05455 14.6273L4.43636 11.9636Z" fill="#FBBC05"/>
-                            <path d="M10 3.95455C11.4727 3.95455 12.8 4.46364 13.8727 5.49091L16.6909 2.67273C14.9455 1.06364 12.7 0 10 0C6.09091 0 2.70909 2.00909 1.05455 5.46364L4.43636 8.12727C5.21818 5.76364 7.40455 3.95455 10 3.95455Z" fill="#EA4335"/>
-                        </svg>
-                    </span>
-                    Sign in with Google
-                </button>
-            </div>
-        </section>
-    </main>
+          <p class="text-sm text-gray-300">
+            Used by <span class="font-medium text-white">10,000+</span> users
+          </p>
+        </div>
+      </div>
 
-    <footer>
-        <p>&copy; 2025 SmartQuiz</p>
+      <!-- Headline -->
+      <h1
+        class="text-4xl md:text-5xl leading-[48px] md:text-6xl md:leading-[84px] font-medium max-w-3xl py-8 text-center"
+      >
+        Generate Instant
+        <span
+          class="relative bg-gradient-to-r from-purple-700 to-[#764de1] bg-clip-text text-transparent"
+        >
+          Quizzes
+          <div class="z-10 absolute bottom-0 left-0 w-full scale-120">
+            <img
+              src="https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/hero/gradient_arc.svg"
+              alt="gradient"
+            />
+          </div>
+        </span>
+        with
+        <span class="text-purple-600">SmartQuiz.</span>
+      </h1>
+      <p class="text-base text-center text-slate-200 max-w-lg">
+        No manual drafting. No copy-pasting. Just clean, PDF-based automation to
+        streamline your workflow.
+      </p>
+
+      <!-- Buttons -->
+      <div class="flex items-center gap-4 mt-8">
+        <button
+          class="flex items-center border border-purple-900 bg-purple-600 hover:bg-purple-700 text-white transition rounded-full px-6 h-11"
+          id="landing-signin-btn"
+        >
+          <ion-icon name="logo-google" class="size-[20px] me-2"></ion-icon>
+          <span class="hidden md:block">Continue with&nbsp;</span>Google
+        </button>
+        <a
+          href="dashboard.html"
+          class="flex items-center border border-purple-900 hover:bg-purple-950/50 transition rounded-full px-6 h-11"
+        >
+          <ion-icon name="people" class="size-[20px] me-2"></ion-icon>
+          <span class="hidden md:block">Try as&nbsp;</span>Guest
+        </a>
+      </div>
+
+      <img
+        src="https://placehold.co/1920x1080"
+        class="w-full rounded-[15px] max-w-4xl mt-16"
+        alt="hero section showcase"
+      />
+    </div>
+
+    <!-- Trusted Brands -->
+    <section class="pt-40">
+      <h3 class="text-base text-center text-slate-400 pb-14 font-medium">
+        Trusted by leading institutions, including —
+      </h3>
+
+      <div
+        class="overflow-hidden w-full relative max-w-5xl mx-auto select-none"
+      >
+        <div
+          class="absolute left-0 top-0 h-full w-20 z-10 pointer-events-none bg-gradient-to-r from-[#0B0C15] to-transparent"
+        ></div>
+
+        <div
+          id="logo-marquee"
+          class="flex marquee-inner will-change-transform w-max"
+        ></div>
+
+        <div
+          class="absolute right-0 top-0 h-full w-20 md:w-40 z-10 pointer-events-none bg-gradient-to-l from-[#0B0C15] to-transparent"
+        ></div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section class="pt-40" id="features">
+      <p class="text-purple-600 text-sm font-medium text-center">Features</p>
+      <h3 class="text-3xl font-semibold text-center mx-auto text-white">
+        Everything you need to ace it
+      </h3>
+      <p class="text-sm text-slate-300 text-center mt-2 max-w-md mx-auto">
+        Essential tools to streamline your study process and test your knowledge
+        instantly.
+      </p>
+
+      <div
+        id="features-grid"
+        class="flex flex-wrap items-center justify-center gap-10 mt-16"
+      ></div>
+    </section>
+
+    <!-- How it Works -->
+    <section class="pt-40" id="how">
+      <p class="text-purple-600 text-sm font-medium text-center">
+        How it Works?
+      </p>
+      <h3 class="text-3xl font-semibold text-center mx-auto text-white">
+        Turn static files into active learning
+      </h3>
+      <p class="text-sm text-slate-300 text-center mt-2 max-w-md mx-auto">
+        Go from static PDF to interactive quiz in three simple steps.
+      </p>
+
+      <div
+        id="how-it-works-grid"
+        class="flex flex-wrap items-center justify-center gap-10 mt-16"
+      ></div>
+    </section>
+
+    <!-- Testimonials -->
+    <section class="pt-40 px-6 md:px-16 lg:px-24 xl:px-32" id="testimonials">
+      <div class="max-w-7xl mx-auto">
+        <p class="text-purple-600 text-sm font-medium text-center">
+          Testimonials
+        </p>
+        <h3 class="text-3xl font-semibold text-center mx-auto text-white">
+          Don't just take our word for it
+        </h3>
+        <p class="text-sm text-slate-300 text-center mt-2 max-w-md mx-auto">
+          Loved by Learners & Educators. See how SmartQuiz is changing the way
+          people study and teach.
+        </p>
+
+        <div
+          id="testimonials-grid"
+          class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-16"
+        ></div>
+      </div>
+    </section>
+
+    <!-- FAQs -->
+    <section class="pt-40" id="faqs">
+      <div
+        class="max-w-3xl mx-auto flex flex-col items-center justify-center px-4 md:px-0"
+      >
+        <p class="text-purple-600 text-sm font-medium">FAQs</p>
+        <h1 class="text-3xl font-semibold text-center text-white">
+          Looking for answer?
+        </h1>
+        <p class="text-sm text-slate-300 mt-2 pb-4 text-center text-slate-300">
+          Ship Beautiful Frontends Without the Overhead — Customizable, Scalable
+          and Developer-Friendly UI Components.
+        </p>
+
+        <!-- FAQ Items -->
+        <div id="faqContainer"></div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer
+      class="w-full bg-gradient-to-b from-[#0B0C15] to-[#2E0A6F] text-white mt-30"
+    >
+      <div class="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center">
+        <div class="flex items-center space-x-3 mb-6">
+          <ion-icon name="sparkles" class="text-3xl"></ion-icon>
+          <span class="text-3xl font-semibold">SmartQuiz</span>
+        </div>
+        <p class="text-center max-w-xl text-sm font-normal leading-relaxed">
+          Transforming static documents into active learning experiences.
+          Leverage the power of AI to master your study materials in seconds.
+        </p>
+      </div>
+      <div class="border-t border-[#3B1A7A]">
+        <div
+          class="max-w-7xl mx-auto px-6 py-6 text-center text-sm font-normal"
+        >
+          <a href="#">SmartQuiz</a> ©2025. All rights reserved.
+        </div>
+      </div>
     </footer>
 
-    <script>
-        window.SMARTQUIZ_BUILD_VERSION = '2025-11-14-a';
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        window.SMARTQUIZ_API_BASE_URL = isLocal ? 'http://localhost:8000/api' : null;
-    </script>
+    <!-- Ionicons Script -->
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
+
+    <script src="js/index.js"></script>
     <script type="module" src="js/auth.js?v=2025-11-14-a"></script>
-</body>
+  </body>
 </html>
