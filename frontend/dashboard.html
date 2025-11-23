@@ -1,99 +1,206 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SmartQuiz — Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <!-- Replace the placeholder meta values below with your AWS project details before deploying. -->
-    <meta name="smartquiz:aws-region" content="ap-southeast-2">
-    <meta name="smartquiz:s3-bucket" content="smartquiz-project-bucket">
-    <meta name="smartquiz:cognito-identity-pool" content="ap-southeast-2:958eea35-fa60-4753-89e4-5ceda33e9206">
-    <link rel="stylesheet" href="css/style.css">
-    <meta name="robots" content="noindex">
-</head>
-<body class="dashboard-layout">
-    <div class="page-shell">
-        <header class="hero hero-panel">
-            <div class="hero-copy">
-                <p class="eyebrow">SmartQuiz — Dashboard</p>
-                <h1>Your quizzes at a glance</h1>
-                <p id="user-welcome">Checking authentication…</p>
-            </div>
-            <div class="hero-actions">
-                <button id="signout-btn" class="ghost pill" style="display:none;">Log Out</button>
-            </div>
+    <meta name="smartquiz:aws-region" content="ap-southeast-2" />
+    <meta name="smartquiz:s3-bucket" content="smartquiz-project-bucket" />
+    <meta
+      name="smartquiz:cognito-identity-pool"
+      content="ap-southeast-2:958eea35-fa60-4753-89e4-5ceda33e9206"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="css/style.css" />
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <div
+      class="xl:flex px-6 md:px-16 lg:px-24 xl:px-32 py-8 gap-8 xl:gap-16 xl:h-screen xl:overflow-hidden"
+    >
+      <div
+        class="absolute top-28 -z-1 left-1/4 size-72 bg-purple-600 blur-[300px]"
+      ></div>
+
+      <aside class="w-full xl:w-2/5 pb-16">
+        <header class="mb-8 border-b border-gray-800 pb-8">
+          <a
+            href="/dashboard.html"
+            class="text-2xl font-bold flex items-center gap-2 text-white mb-6"
+          >
+            <ion-icon name="sparkles" size="large"></ion-icon>
+            SmartQuiz</a
+          >
+
+          <div class="flex items-center justify-between">
+            <p id="user-welcome" class="text-sm text-gray-400">
+              Checking authentication…
+            </p>
+            <button
+              id="signout-btn"
+              class="text-xs flex items-center gap-2 border border-gray-700 rounded px-3 py-1 text-gray-300 hover:bg-gray-800 transition"
+            >
+              <ion-icon name="log-out-outline" class="text-lg"></ion-icon>
+              Log Out
+            </button>
+          </div>
         </header>
 
-        <main class="dashboard-main">
-            <section class="card upload-card" id="upload-card">
-                <div class="card-heading">
-                    <div>
-                        <p class="eyebrow">Upload</p>
-                        <h2>Upload PDF to SmartQuiz</h2>
-                        <p>Attach a PDF syllabus, reviewer, or scanned notes. Then click the Upload to S3 button to generate quiz.</p>
-                    </div>
-                </div>
-                <div class="upload-controls">
-                    <label class="file-input" aria-label="Select PDF to upload">
-                        <input type="file" id="pdf-upload" accept="application/pdf,.pdf">
-                        <div class="file-input-content">
-                            <div class="file-icon" aria-hidden="true"></div>
-                            <div class="file-input-copy">
-                                <div class="file-default-copy">
-                                    <strong>Select PDF</strong>
-                                    <p class="file-input-hint">Drag a PDF here or click to browse.</p>
-                                </div>
-                                <div id="file-selection" class="file-selection" aria-live="polite">
-                                    <button type="button" id="file-remove-btn" class="file-selection-remove" aria-label="Remove selected file">
-                                        <span aria-hidden="true">×</span>
-                                    </button>
-                                    <span class="file-selection-icon" aria-hidden="true"></span>
-                                    <div class="file-selection-text">
-                                        <span id="file-name" class="file-name"></span>
-                                        <span id="file-size" class="file-size"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </label>
-                    <div class="upload-actions">
-                        <button id="s3-upload-btn" class="primary" aria-live="polite">
-                            <span class="btn-label">Upload to S3</span>
-                            <span class="spinner" aria-hidden="true"></span>
-                        </button>
-                        <p id="upload-status" class="helper-text upload-status is-hidden" aria-live="polite"></p>
-                        <p id="upload-confirmation" class="upload-confirmation" aria-live="polite"></p>
-                    </div>
-                </div>
-            </section>
+        <!-- Upload Card -->
+        <div
+          id="upload-card"
+          class="max-w-md w-full p-6 bg-[#11121E] rounded-lg border border-gray-800 shadow-[0px_1px_15px_0px] shadow-purple-500/5 text-sm mx-auto"
+        >
+          <div
+            class="flex items-center justify-center w-11 h-11 bg-gray-800 rounded-full"
+          >
+            <ion-icon
+              name="folder-open-outline"
+              class="text-[19px] text-purple-500"
+            ></ion-icon>
+          </div>
+          <h2 class="text-2xl text-white font-medium mt-3">Upload a file</h2>
+          <p class="text-gray-400 mt-1">Attach the file below</p>
 
-            <section class="card quizzes-card" id="quiz-card">
-                <div class="card-heading">
-                    <div>
-                        <p class="eyebrow">Activity</p>
-                        <h2>Your Quizzes</h2>
-                        <p class="helper-text">Generated quizzes appear here.</p>
-                    </div>
-                    <span id="quiz-status" class="status-pill status-muted">Listening…</span>
-                </div>
-                <div id="quiz-list" class="quiz-list">
-                    <p>Waiting for quiz data…</p>
-                </div>
-            </section>
-        </main>
+          <label
+            for="pdf-upload"
+            class="border-2 border-dotted border-gray-700 p-8 mt-6 flex flex-col items-center gap-4 cursor-pointer hover:border-purple-500 transition group"
+          >
+            <ion-icon
+              name="document-outline"
+              class="text-[31px] text-purple-500 group-hover:scale-110 transition"
+            ></ion-icon>
+            <p class="text-gray-400">Drag files here to upload</p>
+            <p class="text-gray-500">
+              Or
+              <span class="text-purple-400 underline hover:text-purple-300"
+                >click here</span
+              >
+              to select a file
+            </p>
+            <input
+              id="pdf-upload"
+              type="file"
+              accept="application/pdf,.pdf"
+              class="hidden"
+            />
+          </label>
 
-        <footer>
-            <p>&copy; 2025 SmartQuiz</p>
-        </footer>
+          <div
+            id="file-selection"
+            class="hidden mt-6 flex items-center gap-4 p-3 bg-[#0B0C15] border border-gray-800 rounded-md transition-all"
+          >
+            <span
+              class="w-10 h-10 bg-gray-800 rounded border border-gray-700 flex items-center justify-center text-purple-500 shrink-0"
+            >
+              <ion-icon name="document-text-outline" class="text-xl"></ion-icon>
+            </span>
+
+            <div class="flex-1 min-w-0">
+              <span
+                id="file-name"
+                class="block text-sm font-medium text-gray-200 truncate"
+              ></span>
+              <span id="file-size" class="block text-xs text-gray-500"></span>
+            </div>
+
+            <button
+              type="button"
+              id="file-remove-btn"
+              class="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-full transition flex items-center justify-center"
+            >
+              <ion-icon name="close-outline" class="text-lg"></ion-icon>
+            </button>
+          </div>
+
+          <div class="mt-6 flex justify-end gap-4">
+            <button
+              id="s3-upload-btn"
+              type="button"
+              class="px-6 py-2 bg-purple-600 hover:bg-purple-700 active:scale-95 transition-all text-white rounded w-full"
+            >
+              Generate Quiz
+            </button>
+          </div>
+
+          <div
+            class="mt-4 text-center min-h-[1.5rem] transition-all duration-300"
+          >
+            <p
+              id="upload-status"
+              class="text-sm font-medium hidden transition-opacity duration-300"
+              role="status"
+            ></p>
+
+            <p
+              id="upload-confirmation"
+              class="text-sm font-medium hidden transition-opacity duration-300"
+              role="alert"
+            ></p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="w-full xl:w-3/5 xl:h-full xl:overflow-y-auto no-scrollbar">
+        <div id="quiz-card" class="flex flex-col gap-8">
+          <div
+            class="flex flex-col md:flex-row md:items-center justify-between gap-4"
+          >
+            <div>
+              <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">
+                Your Quizzes
+              </h2>
+              <p class="text-gray-400 text-sm">
+                Generated quizzes appear here.
+              </p>
+            </div>
+
+            <span
+              id="quiz-status"
+              class="px-3 py-1.5 rounded-full text-xs font-medium bg-gray-800/50 text-emerald-400 border border-gray-700 flex items-center gap-2 me-auto xl:me-0"
+            >
+              <span class="relative flex h-2 w-2">
+                <span
+                  class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                ></span>
+                <span
+                  class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"
+                ></span>
+              </span>
+              Listening…
+            </span>
+          </div>
+
+          <section id="quiz-list" class="flex flex-col gap-4">
+            <div
+              class="py-8 text-center border border-dashed border-gray-800 rounded-xl"
+            >
+              <p class="text-gray-500 text-sm">Waiting for quiz data…</p>
+            </div>
+          </section>
+        </div>
+      </main>
     </div>
 
+    <!-- Ionicons Script -->
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
+
     <script>
-        window.SMARTQUIZ_BUILD_VERSION = window.SMARTQUIZ_BUILD_VERSION || '2025-11-14-a';
+      window.SMARTQUIZ_BUILD_VERSION =
+        window.SMARTQUIZ_BUILD_VERSION || "2025-11-14-a";
     </script>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1525.0.min.js"></script>
     <script type="module" src="js/auth.js?v=2025-11-14-a"></script>
     <script type="module" src="js/dashboard.js?v=2025-11-14-a"></script>
     <script type="module" src="js/upload.js?v=2025-11-14-a"></script>
-</body>
+  </body>
 </html>
