@@ -383,6 +383,8 @@ def persist_quiz(quiz: dict, bucket: str, key: str) -> None:
 
     db = get_firestore_client()
     owner_id = _infer_owner_from_key(key)
+    guest_upload = _is_guest_upload_key(key)
+    owner_type = "guest" if guest_upload else ("registered" if owner_id else "unknown")
     doc = {
         "title": quiz.get("title") or Path(key).stem,
         "questions": quiz.get("questions", []),
@@ -390,7 +392,13 @@ def persist_quiz(quiz: dict, bucket: str, key: str) -> None:
         "pipeline": "lambda-dual-path",
         "created_at": firebase_firestore.SERVER_TIMESTAMP,
         "ownerId": owner_id,
+        "ownerType": owner_type,
     }
+
+    if guest_upload:
+        # TTL cleanup: guest quizzes expire after 24 hours
+        doc["expirationDate"] = datetime.now(timezone.utc) + timedelta(hours=24)
+
     db.collection("quizzes").add(doc)
     LOGGER.info("Quiz saved for %s", key)
 

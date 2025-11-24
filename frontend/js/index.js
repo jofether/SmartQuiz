@@ -23,6 +23,39 @@ const closeMenuHandler = () => {
 openMenu.addEventListener("click", openMenuHandler);
 closeMenu.addEventListener("click", closeMenuHandler);
 
+const navGenerateBtn = document.getElementById("nav-generate-btn");
+const primaryCtas = [
+  document.getElementById("landing-signin-btn"),
+  document.getElementById("guest-mode-btn"),
+];
+let glowTimeoutHandle;
+
+const triggerCtaGlow = () => {
+  if (glowTimeoutHandle) {
+    clearTimeout(glowTimeoutHandle);
+  }
+  primaryCtas.forEach((btn) => {
+    if (!btn) return;
+    btn.classList.remove("cta-glow");
+    // Force reflow so animation can restart reliably
+    void btn.offsetWidth;
+    btn.classList.add("cta-glow");
+    btn.style.boxShadow =
+      "0 0 18px rgba(168, 85, 247, 0.8), 0 0 32px rgba(168, 85, 247, 0.35)";
+  });
+  glowTimeoutHandle = setTimeout(() => {
+    primaryCtas.forEach((btn) => {
+      if (!btn) return;
+      btn.classList.remove("cta-glow");
+      btn.style.boxShadow = "";
+    });
+  }, 1600);
+};
+
+navGenerateBtn?.addEventListener("click", () => {
+  triggerCtaGlow();
+});
+
 // Trusted Brands Marquee
 const institutions = [
   {

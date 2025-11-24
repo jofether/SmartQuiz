@@ -35,3 +35,8 @@ body {
     transform: translateX(-50%);
   }
 }
+
+.cta-glow {
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.8), 0 0 32px rgba(168, 85, 247, 0.35);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
