@@ -26,6 +26,17 @@ body {
   background-color: #0b0c15;
 }
 
+.choice-selected {
+  border-color: #9333ea !important; /* purple-600 */
+  background-color: rgba(147, 51, 234, 0.1) !important;
+}
+.choice-selected .radio-circle {
+  border-color: #9333ea !important;
+}
+.choice-selected .radio-dot {
+  opacity: 1 !important;
+}
+
 @keyframes marqueeScroll {
   0% {
     transform: translateX(0%);
