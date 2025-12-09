@@ -118,19 +118,19 @@ const features = [
     title: "Automated Generation",
     description:
       "Instantly parse your PDF documents to identify key concepts and generate relevant questions in seconds.",
-    image: "https://placehold.co/1920x1080", // Replace with your actual image path later
+    image: "automated-generation.png",
   },
   {
     title: "Save & Review",
     description:
       "Log in to save your quiz history, allowing you to revisit past questions and track your study progress.",
-    image: "https://placehold.co/1920x1080",
+    image: "save-and-review.png",
   },
   {
     title: "Distraction-Free",
     description:
       "A clean, clutter-free interface designed to help you focus purely on the content without unnecessary noise.",
-    image: "https://placehold.co/1920x1080",
+    image: "distraction-free.png",
   },
 ];
 
@@ -164,7 +164,7 @@ featuresGrid.innerHTML = features
   .map(
     (feature) => `
   <div class="max-w-80 hover:-translate-y-0.5 transition duration-300 group">
-    <img class="rounded-xl mb-4" src="${feature.image}" alt="${feature.title}" />
+    <img class="rounded-2xl mb-4 border-1 border-purple-500" src="${feature.image}" alt="${feature.title}" />
     <h3 class="text-base font-semibold text-white">
       ${feature.title}
     </h3>
