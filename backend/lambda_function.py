@@ -1,10 +1,11 @@
 """SmartQuiz Lambda handler: convert uploaded PDFs into Firestore quizzes.
 
 Pipeline per invocation:
-1. Receive S3 ObjectCreated event and download the PDF to /tmp.
-2. Perform dual-path text extraction (PyPDF2 + Google Vision OCR).
-3. Merge extracted text and call Google Gemini for structured questions.
-4. Persist the quiz document to Firestore using Firebase Admin SDK.
+1. Entry Point: Checks if trigger is S3 (file upload) or HTTP (Function URL).
+2. Download/Save: Gets the PDF from S3 or decodes it from the HTTP body to /tmp.
+3. Extract: Performs dual-path text extraction (PyPDF2 + Google Vision OCR).
+4. Generate: Calls Google Gemini for structured questions.
+5. Persist: Saves the quiz document to Firestore.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import base64
 import json
 import logging
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from google.oauth2 import service_account
 import tempfile
@@ -31,7 +33,6 @@ _BOTO_CLIENTS: dict[str, Optional[object]] = {}
 
 def _get_boto_client(service_name: str):
     """Lazily create boto3 clients."""
-
     if service_name in _BOTO_CLIENTS:
         return _BOTO_CLIENTS[service_name]
 
@@ -50,7 +51,7 @@ def _get_boto_client(service_name: str):
                 f"{service_name} client requires AWS_REGION or AWS_DEFAULT_REGION"
             ) from exc
         LOGGER.warning(
-            "%s client disabled because AWS region is not configured. Set AWS_REGION for full functionality.",
+            "%s client disabled because AWS region is not configured.",
             service_name.upper(),
         )
         client = None
@@ -65,60 +66,122 @@ def _get_boto_client(service_name: str):
 
 
 def lambda_handler(event, _context):
-    """AWS Lambda entrypoint triggered by an S3 ObjectCreated notification."""
+    """Entrypoint handling BOTH S3 Events and HTTP Function URL requests."""
 
-    LOGGER.info("Inbound event: %s", json.dumps(event))
-    bucket, key = _extract_s3_coordinates(event)
-    if not bucket or not key:
-        return {"statusCode": 400, "body": json.dumps({"error": "invalid_event"})}
+    # 1. Setup paths and CORS headers
+    pdf_path = Path(tempfile.gettempdir()) / "uploaded_file.pdf"
+    cors_headers = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'https://smartquiz-ae2ba.web.app',
+        'Access-Control-Allow-Methods': 'OPTIONS,POST',
+        'Access-Control-Allow-Headers': 'Content-Type'
+    }
 
-    key = urllib.parse.unquote_plus(key)
+    # 2. Handle CORS Preflight (OPTIONS method)
+    if 'requestContext' in event and event['requestContext'].get('http', {}).get('method') == 'OPTIONS':
+        return {'statusCode': 200, 'headers': cors_headers, 'body': ''}
+
+    bucket = "direct-upload"
+    key = f"uploads/guests/web-upload-{int(time.time())}.pdf"  # Fallback key for HTTP uploads
 
     try:
-        local_pdf = download_pdf_to_tmp(bucket, key)
-    except Exception:
-        LOGGER.exception("Unable to download s3://%s/%s", bucket, key)
-        return {"statusCode": 500, "body": json.dumps({"error": "download_failed"})}
+        # --- PATH A: Triggered by S3 Event (Original Pipeline) ---
+        if 'Records' in event:
+            LOGGER.info("Processing S3 Event Trigger")
+            bucket, key = _extract_s3_coordinates(event)
+            if not bucket or not key:
+                return {"statusCode": 400, "body": json.dumps({"error": "invalid_s3_event"})}
+            
+            key = urllib.parse.unquote_plus(key)
+            try:
+                download_pdf_to_tmp(bucket, key, pdf_path)
+            except Exception:
+                LOGGER.exception("Unable to download s3://%s/%s", bucket, key)
+                return {"statusCode": 500, "body": json.dumps({"error": "s3_download_failed"})}
 
-    # --- 1. Extract Digital Text First ---
-    digital_text = extract_digital_text(local_pdf)
-    LOGGER.info(f"PyPDF2 extracted {len(digital_text)} characters")
+        # --- PATH B: Triggered by Function URL (Website Upload) ---
+        elif 'body' in event:
+            LOGGER.info("Processing HTTP Function URL Trigger")
+            try:
+                file_content = event['body']
+                if event.get('isBase64Encoded', False):
+                    file_content = base64.b64decode(file_content)
+                
+                with open(pdf_path, 'wb') as f:
+                    f.write(file_content)
+            except Exception as e:
+                LOGGER.exception("Failed to decode HTTP body")
+                return {
+                    "statusCode": 500, 
+                    "headers": cors_headers,
+                    "body": json.dumps({"error": f"upload_decode_failed: {str(e)}"})
+                }
+        else:
+            return {
+                "statusCode": 400, 
+                "headers": cors_headers,
+                "body": json.dumps({"error": "Unknown event type. Send 'body' or S3 'Records'."})
+            }
 
-    # --- 2. Conditional OCR (Safety Check) ---
-    ocr_text = ""
-    # Only risk running OCR if digital text is missing or very short (< 50 chars)
-    if len(digital_text) < 50:
-        LOGGER.info("Text content is missing or scant. Attempting OCR fallback...")
+        # --- PIPELINE: Extract Text ---
+        digital_text = extract_digital_text(pdf_path)
+        LOGGER.info(f"PyPDF2 extracted {len(digital_text)} characters")
+
+        ocr_text = ""
+        # Conditional OCR if text is missing or too short
+        if len(digital_text) < 50:
+            LOGGER.info("Text content scant. Attempting OCR fallback...")
+            try:
+                ocr_text = extract_ocr_text_vision(pdf_path)
+            except Exception as e:
+                LOGGER.error(f"OCR Warning (Non-fatal): {e}")
+
+        combined_text = combine_text_streams([digital_text, ocr_text])
+
+        if not combined_text or len(combined_text.strip()) == 0:
+            return {
+                "statusCode": 200, 
+                "headers": cors_headers,
+                "body": json.dumps({"message": "no_text_extracted", "questions": []})
+            }
+
+        # --- PIPELINE: Generate Quiz ---
+        quiz_title = Path(key).stem[:120] or "SmartQuiz Upload"
         try:
-            ocr_text = extract_ocr_text_vision(local_pdf)
+            questions = call_gemini(combined_text, quiz_title)
         except Exception as e:
-            # Capture error but DO NOT crash. Allow the function to try Gemini with whatever it has.
-            LOGGER.error(f"OCR Warning (Non-fatal): {e}")
-    else:
-        LOGGER.info("Sufficient digital text found. Skipping OCR to prevent API errors.")
+            LOGGER.exception("Gemini call failed")
+            return {
+                "statusCode": 500, 
+                "headers": cors_headers,
+                "body": json.dumps({"error": f"ai_generation_failed: {str(e)}"})
+            }
 
-    combined_text = combine_text_streams([digital_text, ocr_text])
+        # --- PIPELINE: Save to Firestore ---
+        try:
+            persist_quiz({"title": quiz_title, "questions": questions}, bucket, key)
+        except Exception as e:
+            LOGGER.exception("Firestore write failed")
+            # We don't fail the HTTP request here, as the user still wants their questions
+            
+        # --- FINAL SUCCESS RESPONSE ---
+        return {
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": json.dumps({
+                "message": "processed", 
+                "questions": questions,
+                "title": quiz_title
+            })
+        }
 
-    if not combined_text or len(combined_text.strip()) == 0:
-        LOGGER.warning("No text extracted from %s", key)
-        return {"statusCode": 200, "body": json.dumps({"message": "no_text_extracted"})}
-
-    quiz_title = Path(key).stem[:120] or "SmartQuiz Upload"
-
-    try:
-        # --- 3. Call Gemini ---
-        questions = call_gemini(combined_text, quiz_title)
-    except Exception:
-        LOGGER.exception("Gemini call failed for %s", key)
-        return {"statusCode": 500, "body": json.dumps({"error": "ai_failed"})}
-
-    try:
-        persist_quiz({"title": quiz_title, "questions": questions}, bucket, key)
-    except Exception:
-        LOGGER.exception("Firestore write failed for %s", key)
-        return {"statusCode": 500, "body": json.dumps({"error": "firestore_failed"})}
-
-    return {"statusCode": 200, "body": json.dumps({"message": "processed", "questions": len(questions)})}
+    except Exception as e:
+        LOGGER.exception("Unhandled Lambda Error")
+        return {
+            "statusCode": 500, 
+            "headers": cors_headers,
+            "body": json.dumps({"error": f"internal_server_error: {str(e)}"})
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -127,28 +190,19 @@ def lambda_handler(event, _context):
 
 
 def _extract_s3_coordinates(event: dict) -> Tuple[Optional[str], Optional[str]]:
-    """Return (bucket, key) tuple from the S3 event body."""
-
     try:
         record = event["Records"][0]
         bucket = record["s3"]["bucket"]["name"]
         key = record["s3"]["object"]["key"]
         return bucket, key
     except (KeyError, IndexError, TypeError):
-        LOGGER.error("Malformed S3 event: %s", event)
         return None, None
 
 
-def download_pdf_to_tmp(bucket: str, key: str) -> Path:
-    """Download the S3 object into /tmp and return its local path."""
-
+def download_pdf_to_tmp(bucket: str, key: str, local_path: Path) -> Path:
     s3_client = _get_boto_client("s3")
     if s3_client is None:
-        raise RuntimeError("S3 client unavailable. Set AWS_REGION before invoking lambda_handler locally.")
-
-    tmp_dir = Path(tempfile.gettempdir())
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    local_path = tmp_dir / Path(key).name
+        raise RuntimeError("S3 client unavailable.")
 
     LOGGER.info("Downloading s3://%s/%s", bucket, key)
     s3_client.download_file(bucket, key, str(local_path))
@@ -161,11 +215,8 @@ def download_pdf_to_tmp(bucket: str, key: str) -> Path:
 
 
 def extract_digital_text(pdf_path: Path) -> str:
-    """Fast path: use PyPDF2 for digital/native text."""
-
     try:
         from PyPDF2 import PdfReader
-
         reader = PdfReader(str(pdf_path))
         pages = []
         for page in reader.pages:
@@ -175,29 +226,19 @@ def extract_digital_text(pdf_path: Path) -> str:
                 text = ""
             if text:
                 pages.append(text)
-
-        combined = "\n".join(pages).strip()
-        LOGGER.info("PyPDF2 extracted %d characters", len(combined))
-        return combined
-    except ImportError as exc:
-        LOGGER.error("PyPDF2 missing from deployment: %s", exc)
+        return "\n".join(pages).strip()
     except Exception:
         LOGGER.exception("PyPDF2 failed to parse %s", pdf_path)
-
     return ""
 
 
 def extract_ocr_text_vision(pdf_path):
-    """Uses Google Cloud Vision (OCR) to extract text from PDF."""
-
     from google.cloud import vision
-
-    print(f"[INFO] Starting Google Cloud Vision OCR for {pdf_path}")
+    LOGGER.info(f"Starting Google Cloud Vision OCR for {pdf_path}")
 
     try:
         service_account_info = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
         if not service_account_info:
-            print("[ERROR] FIREBASE_SERVICE_ACCOUNT env var is missing.")
             return ""
 
         if isinstance(service_account_info, str):
@@ -215,7 +256,7 @@ def extract_ocr_text_vision(pdf_path):
         response = vision_client.text_detection(image=image)
 
         if response.error.message:
-            print(f"[ERROR] Vision API Error: {response.error.message}")
+            LOGGER.error(f"Vision API Error: {response.error.message}")
             return ""
 
         texts = response.text_annotations
@@ -224,9 +265,7 @@ def extract_ocr_text_vision(pdf_path):
         return ""
 
     except Exception as e:
-        print(f"[ERROR] OCR Failed: {e}")
-        import traceback
-        traceback.print_exc()
+        LOGGER.error(f"OCR Failed: {e}")
         return ""
 
 
@@ -240,16 +279,14 @@ def combine_text_streams(chunks: Iterable[str]) -> str:
 
 
 def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
-    """Send the merged text to Gemini and return a list of quiz questions."""
-
     try:
         import google.generativeai as genai
     except ImportError as exc:
-        raise RuntimeError("google-generativeai is not installed (packaging error)") from exc
+        raise RuntimeError("google-generativeai missing") from exc
 
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError("GEMINI_API_KEY environment variable is required")
+        raise RuntimeError("GEMINI_API_KEY required")
 
     genai.configure(api_key=api_key)
     model_name = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-001")
@@ -271,8 +308,7 @@ def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
     text = _extract_text_from_response(response)
     try:
         questions = _parse_ai_json(text)
-    except Exception as exc:
-        LOGGER.warning("Gemini produced invalid JSON; falling back to heuristics: %s", exc)
+    except Exception:
         questions = _fallback_quiz_from_text(source_text, max_questions=target_questions)
     return _ensure_question_count(questions, target_questions, source_text)
 
@@ -280,62 +316,37 @@ def call_gemini(source_text: str, quiz_title: str) -> List[dict]:
 def _extract_text_from_response(response) -> str:
     if getattr(response, "text", None):
         return response.text
-
     candidates = getattr(response, "candidates", [])
     for candidate in candidates:
         parts = candidate.get("content", {}).get("parts") if isinstance(candidate, dict) else getattr(candidate, "content", None)
-        if not parts:
-            continue
-        excerpts = []
-        for part in parts:
-            part_text = getattr(part, "text", None) or part.get("text") if isinstance(part, dict) else None
-            if part_text:
-                excerpts.append(part_text)
-        if excerpts:
-            return "\n".join(excerpts)
-
+        if parts:
+            return parts[0].text
     raise ValueError("Gemini response contained no text")
 
 
 def _parse_ai_json(text: str) -> List[dict]:
     import json as _json
     import re
-
     try:
         payload = _json.loads(text)
-        if isinstance(payload, list):
-            return payload
+        if isinstance(payload, list): return payload
         if isinstance(payload, dict):
-            for value in payload.values():
-                if isinstance(value, list):
-                    return value
-    except Exception:
-        LOGGER.debug("Strict JSON parsing failed; attempting regex extract")
-
+            for v in payload.values():
+                if isinstance(v, list): return v
+    except Exception: pass
     match = re.search(r"(\[\s*\{[\s\S]*?\}\s*\])", text)
-    if match:
-        return _json.loads(match.group(1))
-
-    raise ValueError("Gemini output was not a JSON array")
+    if match: return _json.loads(match.group(1))
+    raise ValueError("Invalid JSON output")
 
 
 def _ensure_question_count(questions: List[dict], target: int, source_text: str) -> List[dict]:
     sanitized = [q for q in questions if isinstance(q, dict)]
     if len(sanitized) >= target:
         return sanitized[:target]
-
-    deficit = max(target - len(sanitized), 0)
-    if deficit:
-        LOGGER.warning(
-            "Gemini produced %d questions; padding with %d fallback items to reach %d",
-            len(sanitized),
-            deficit,
-            target,
-        )
-        filler = _fallback_quiz_from_text(source_text, max_questions=deficit)
-        sanitized.extend(filler)
-
-    # If fallback still cannot reach target, return whatever we have.
+    
+    deficit = target - len(sanitized)
+    if deficit > 0:
+        sanitized.extend(_fallback_quiz_from_text(source_text, max_questions=deficit))
     return sanitized[:target]
 
 
@@ -348,30 +359,22 @@ _FIRESTORE_CLIENT = None
 
 
 def get_firestore_client():
-    """Initialize Firebase Admin once and return the Firestore client."""
+    global _FIRESTORE_CLIENT
+    if _FIRESTORE_CLIENT: return _FIRESTORE_CLIENT
 
-    global _FIRESTORE_CLIENT  # noqa: PLW0603 - intentional module cache
-    if _FIRESTORE_CLIENT is not None:
-        return _FIRESTORE_CLIENT
-
-    try:
-        import firebase_admin
-        from firebase_admin import credentials, firestore
-    except ImportError as exc:
-        raise RuntimeError("firebase-admin is not installed") from exc
+    import firebase_admin
+    from firebase_admin import credentials, firestore
 
     raw = os.environ.get("FIREBASE_SERVICE_ACCOUNT")
-    if not raw:
-        raise RuntimeError("FIREBASE_SERVICE_ACCOUNT environment variable is required")
+    if not raw: raise RuntimeError("FIREBASE_SERVICE_ACCOUNT required")
 
     try:
         payload = json.loads(raw)
     except json.JSONDecodeError:
-        decoded = base64.b64decode(raw).decode("utf-8")
-        payload = json.loads(decoded)
+        payload = json.loads(base64.b64decode(raw).decode("utf-8"))
 
     cred = credentials.Certificate(payload)
-    if not firebase_admin._apps:  # type: ignore[attr-defined]
+    if not firebase_admin._apps:
         firebase_admin.initialize_app(cred)
 
     _FIRESTORE_CLIENT = firestore.client()
@@ -380,109 +383,43 @@ def get_firestore_client():
 
 def persist_quiz(quiz: dict, bucket: str, key: str) -> None:
     from firebase_admin import firestore as firebase_firestore
-
     db = get_firestore_client()
-    owner_id = _infer_owner_from_key(key)
-    guest_upload = _is_guest_upload_key(key)
-    owner_type = "guest" if guest_upload else ("registered" if owner_id else "unknown")
+    
+    # Simple logic for guest identification
+    is_guest = "guests" in key or "direct-upload" in bucket
+    owner_type = "guest" if is_guest else "unknown"
+    
     doc = {
-        "title": quiz.get("title") or Path(key).stem,
+        "title": quiz.get("title"),
         "questions": quiz.get("questions", []),
         "source": {"bucket": bucket, "key": key},
         "pipeline": "lambda-dual-path",
         "created_at": firebase_firestore.SERVER_TIMESTAMP,
-        "ownerId": owner_id,
         "ownerType": owner_type,
     }
-
-    if guest_upload:
-        # TTL cleanup: guest quizzes expire after 24 hours
+    if is_guest:
         doc["expirationDate"] = datetime.now(timezone.utc) + timedelta(hours=24)
 
     db.collection("quizzes").add(doc)
-    LOGGER.info("Quiz saved for %s", key)
-
-
-def _infer_owner_from_key(key: str) -> Optional[str]:
-    parts = key.strip("/").split("/")
-    if not parts or parts[0] != "uploads":
-        return None
-
-    if len(parts) >= 3 and parts[1] in {"users", "guests"}:
-        return parts[2]
-
-    if len(parts) >= 2:
-        return parts[1]
-    return None
-
-
-def _is_guest_upload_key(key: str) -> bool:
-    parts = key.strip("/").split("/")
-    if not parts or parts[0] != "uploads":
-        return False
-
-    if len(parts) >= 2 and parts[1] == "guests":
-        return True
-
-    if len(parts) >= 3 and parts[1] == "users":
-        return False
-
-    if len(parts) >= 3:
-        return "guest" in parts[2:]
-    return False
+    LOGGER.info("Quiz saved to Firestore")
 
 
 # ---------------------------------------------------------------------------
-# Local helper (dev utility)
+# Fallback logic
 # ---------------------------------------------------------------------------
-
-
-def generate_quiz_with_ai(source_text: str, quiz_title: str) -> dict:
-    """Convenience wrapper for local scripts/tests."""
-
-    try:
-        questions = call_gemini(source_text, quiz_title)
-    except Exception as exc:  # pragma: no cover - dev safeguard
-        LOGGER.warning("Gemini unavailable, returning stub questions: %s", exc)
-        questions = _fallback_quiz_from_text(source_text)
-
-    return {"title": quiz_title or "SmartQuiz Draft", "questions": questions}
 
 
 def _fallback_quiz_from_text(source_text: str, max_questions: int = 3) -> List[dict]:
     import re
-
     tokens = [re.sub(r"[^A-Za-z0-9]", "", word).lower() for word in source_text.split() if word]
-    keywords: List[str] = []
-    for token in tokens:
-        if len(token) >= 4 and token not in keywords:
-            keywords.append(token)
-
-    questions: List[dict] = []
+    keywords = list(dict.fromkeys([t for t in tokens if len(t) >= 4]))  # dedup
+    
+    questions = []
     for idx, keyword in enumerate(keywords[:max_questions]):
-        distractors = []
-        for filler in keywords[max(idx + 1, 1): idx + 4]:
-            if filler != keyword and filler not in distractors:
-                distractors.append(filler)
-        while len(distractors) < 3:
-            distractors.append(f"Option {len(distractors) + 1}")
-
-        choices = (distractors[:3] + [keyword])[:4]
-
-        questions.append(
-            {
-                "question": f"Which keyword appears in snippet {idx + 1}?",
-                "choices": choices,
-                "answer": keyword,
-                "explanation": f"The term '{keyword}' is present in the document.",
-            }
-        )
-
-    return questions or [
-        {
-            "question": "Placeholder question",
-            "choices": ["A", "B", "C", "D"],
-            "answer": "A",
-            "explanation": "Fallback used because no keywords were detected.",
-        }
-    ]
+        questions.append({
+            "question": f"Which term is discussed in section {idx+1}?",
+            "choices": [keyword, "Option B", "Option C", "Option D"],
+            "answer": keyword,
+            "explanation": f"The document mentions {keyword}."
+        })
+    return questions or [{"question": "Error fallback", "choices": ["A","B","C","D"], "answer": "A", "explanation": "Failed to generate."}]
